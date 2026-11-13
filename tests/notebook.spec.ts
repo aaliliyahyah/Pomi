@@ -2,13 +2,26 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setup(page: Page) {
   await page.goto("/");
-  await page.getByLabel("My available allowance").fill("1000");
-  await page.getByLabel("My first savings fund").fill("Rainy day");
-  await page.getByLabel("Already saved in this fund").fill("100");
-  await page.getByRole("button", { name: "Open my notebook" }).click();
   await expect(
     page.getByRole("heading", { name: "My money, at a glance." }),
   ).toBeVisible();
+  await expect(page.locator(".hero-balance").first()).toHaveText("₱0.00");
+  await page.getByRole("link", { name: "History", exact: true }).click();
+  for (const [name, amount] of [
+    ["Starting allowance", "1000"],
+    ["Starting savings", "100"],
+  ]) {
+    await page
+      .getByRole("button", { name: `Edit ${name}`, exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("spinbutton", { name: "Amount", exact: true })
+      .fill(amount);
+    await page.getByRole("button", { name: "Save entry", exact: true }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+  }
+  await page.getByRole("link", { name: "Home", exact: true }).click();
 }
 async function saveEntry(page: Page, amount: string, note: string) {
   await page
@@ -121,12 +134,18 @@ test("warns about negative allowance, blocks excessive withdrawals, validates ba
 }) => {
   await setup(page);
   await page.getByRole("button", { name: "Add expense", exact: true }).click();
-  page.once("dialog", (dialog) => dialog.dismiss());
+  const dismissed = new Promise<void>((resolve) => {
+    page.once("dialog", async (dialog) => {
+      await dialog.dismiss();
+      resolve();
+    });
+  });
   await page
     .getByRole("dialog")
     .getByRole("spinbutton", { name: "Amount", exact: true })
     .fill("1500");
   await page.getByRole("button", { name: "Save entry", exact: true }).click();
+  await dismissed;
   await expect(page.getByRole("dialog")).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save entry", exact: true }).click();

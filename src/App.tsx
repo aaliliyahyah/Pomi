@@ -30,9 +30,8 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { AllowanceWarning, changeNotebook, db } from "./db";
+import { AllowanceWarning, changeNotebook, db, openNotebook } from "./db";
 import {
-  emptyNotebook,
   exportBackup,
   importBackup,
   labels,
@@ -231,91 +230,6 @@ function Empty({
       <p>{children}</p>
       {action}
     </div>
-  );
-}
-function Setup() {
-  return (
-    <main className="setup-page">
-      <a className="brand" href="#home">
-        <span className="brand-mark">
-          <Sprout size={26} />
-        </span>
-        pomi<span className="brand-dot">.</span>
-      </a>
-      <section className="setup-card">
-        <span className="eyebrow">A FRESH PAGE</span>
-        <h1>
-          A little care for
-          <br />
-          your money.
-        </h1>
-        <p className="intro">
-          Your allowance, your savings, your own pace. Let’s start with what you
-          already have.
-        </p>
-        <Form
-          label="Open my notebook"
-          submit={async (data) => {
-            const allowance = parseAmount(text(data, "allowance"), true);
-            const savings = parseAmount(text(data, "savings"), true);
-            const name = text(data, "fundName").trim();
-            const fund: Fund = {
-              id: crypto.randomUUID(),
-              name,
-              goal: null,
-              archived: false,
-            };
-            await changeNotebook((current) => {
-              if (current.initialized)
-                throw new Error(
-                  "Your notebook is already set up. Reload to open it.",
-                );
-              return {
-                ...emptyNotebook(),
-                initialized: true,
-                funds: [fund],
-                entries: [
-                  makeEntry("opening_allowance", allowance),
-                  makeEntry("opening_savings", savings, { fundId: fund.id }),
-                ],
-              };
-            });
-            navigator.storage?.persist?.().catch(() => {});
-          }}
-        >
-          <AmountField
-            name="allowance"
-            label="My available allowance"
-            value="0.00"
-            allowZero
-          />
-          <div className="form-divider" />
-          <label>
-            My first savings fund
-            <input
-              name="fundName"
-              required
-              maxLength={60}
-              defaultValue="My savings"
-              placeholder="e.g. Rainy day fund"
-            />
-          </label>
-          <AmountField
-            name="savings"
-            label="Already saved in this fund"
-            value="0.00"
-            allowZero
-          />
-          <p className="field-help">
-            These are starting balances, not new income. You can correct them
-            later in History.
-          </p>
-        </Form>
-      </section>
-      <p className="setup-foot">
-        <Leaf size={15} /> No account. Just your notebook, saved on this device.
-      </p>
-    </main>
   );
 }
 function EntryEditor({
@@ -928,18 +842,36 @@ function SettingsPage({
 }
 
 export default function App() {
+  const [ready, setReady] = useState(false);
+  const [openError, setOpenError] = useState("");
+  useEffect(() => {
+    let active = true;
+    openNotebook().then(
+      () => {
+        if (!active) return;
+        setReady(true);
+        navigator.storage?.persist?.().catch(() => {});
+      },
+      (error) => {
+        if (active) setOpenError(errorMessage(error));
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
   const loaded = useLiveQuery(async () => {
+    if (openError) return { book: null, error: openError };
+    if (!ready) return undefined;
     try {
       return {
-        book: validateNotebook(
-          (await db.notebooks.get("main")) ?? emptyNotebook(),
-        ),
+        book: validateNotebook(await db.notebooks.get("main")),
         error: "",
       };
     } catch (e) {
       return { book: null, error: errorMessage(e) };
     }
-  }, []);
+  }, [ready, openError]);
   const [page, setPage] = useState<Page>(pageFromHash);
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState("");
@@ -1019,7 +951,6 @@ export default function App() {
       </main>
     );
   const book = loaded.book;
-  if (!book.initialized) return <Setup />;
   const balances = totals(book);
   const sorted = [...book.entries].sort(
     (a, b) =>

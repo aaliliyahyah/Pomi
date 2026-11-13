@@ -1104,11 +1104,6 @@ select:disabled {
   font-size: 12px;
   padding: 13px 17px;
 }
-.form-divider {
-  height: 1px;
-  background: var(--line);
-  margin: 25px 0;
-}
 .visually-hidden {
   position: absolute;
   width: 1px !important;
@@ -1118,50 +1113,6 @@ select:disabled {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-.setup-page {
-  min-height: 100dvh;
-  padding: 36px 24px 28px;
-  background:
-    radial-gradient(ellipse at 80% 10%, #e8edda, transparent 60%), #f7f8f3;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-}
-.setup-page > .brand {
-  margin-bottom: 30px;
-}
-.setup-card {
-  width: min(470px, 100%);
-  background: #fcfdf8;
-  border: 1px solid #e0e5d6;
-  border-radius: 16px;
-  padding: 36px 38px;
-  box-shadow: 0 12px 70px #60794708;
-}
-.setup-card h1 {
-  font-family: var(--serif);
-  font-size: 43px;
-  line-height: 1.12;
-  letter-spacing: -1px;
-  color: #294f3e;
-  margin: 15px 0;
-}
-.intro {
-  font-size: 12px;
-  color: #859075;
-  line-height: 1.8;
-  margin-bottom: 30px;
-}
-.setup-foot {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #94a183;
-  font-size: 10px;
-  margin-top: 23px;
-  text-align: center;
-  line-height: 1.8;
 }
 @media (min-width: 1500px) {
   .main-content {
@@ -1303,15 +1254,6 @@ select:disabled {
   }
   .today-label {
     display: none;
-  }
-  .setup-page .brand {
-    font-size: 39px;
-  }
-  .setup-page .brand-dot {
-    display: inline;
-  }
-  .setup-page .brand-mark {
-    margin-right: 6px;
   }
   .week-strip .week-caption {
     display: none !important;
@@ -1629,18 +1571,6 @@ select:disabled {
     max-width: calc(100% - 30px);
     font-size: 11px;
     padding: 13px;
-  }
-  .setup-page {
-    padding: 28px 20px;
-  }
-  .setup-card {
-    padding: 29px 25px;
-  }
-  .setup-card h1 {
-    font-size: 39px;
-  }
-  .setup-foot {
-    font-size: 9px;
   }
   .dialog-inner {
     padding: 23px;
