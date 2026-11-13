@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { AllowanceWarning, changeNotebook, PomiDatabase } from "./db";
+import {
+  AllowanceWarning,
+  changeNotebook,
+  openNotebook,
+  PomiDatabase,
+} from "./db";
 import { emptyNotebook, makeEntry, totals, withEntry } from "./model";
 const databases: PomiDatabase[] = [];
 const database = () => {
@@ -11,6 +16,26 @@ afterEach(async () => {
   await Promise.all(databases.splice(0).map((db) => db.delete()));
 });
 describe("persistent notebook operations", () => {
+  it("opens a new notebook once across concurrent loads and preserves saved entries", async () => {
+    const db = database();
+    const [first, second] = await Promise.all([
+      openNotebook(db),
+      openNotebook(db),
+    ]);
+    expect(first).toEqual(second);
+    expect(first.initialized).toBe(true);
+    expect(first.funds.map((fund) => fund.name)).toEqual(["My savings"]);
+    expect(first.entries).toHaveLength(2);
+    expect(totals(first).allowance).toBe(0);
+    expect(totals(first).savings).toBe(0);
+    await changeNotebook(
+      (book) => withEntry(book, makeEntry("allowance", 500)),
+      false,
+      db,
+    );
+    const saved = await db.notebooks.get("main");
+    expect(await openNotebook(db)).toEqual(saved);
+  });
   it("warns before negative allowance and writes only after acceptance", async () => {
     const db = database();
     await changeNotebook((b) => ({ ...b, initialized: true }), false, db);

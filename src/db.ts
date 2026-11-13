@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import {
   emptyNotebook,
+  makeEntry,
   totals,
   validateNotebook,
   type Notebook,
@@ -14,6 +15,31 @@ export class PomiDatabase extends Dexie {
   }
 }
 export const db = new PomiDatabase();
+export async function openNotebook(database = db): Promise<Notebook> {
+  return database.transaction("rw", database.notebooks, async () => {
+    const current = validateNotebook(
+      (await database.notebooks.get("main")) ?? emptyNotebook(),
+    );
+    if (current.initialized) return current;
+    const fund = {
+      id: crypto.randomUUID(),
+      name: "My savings",
+      goal: null,
+      archived: false,
+    };
+    const book = validateNotebook({
+      ...current,
+      initialized: true,
+      funds: [fund],
+      entries: [
+        makeEntry("opening_allowance", 0),
+        makeEntry("opening_savings", 0, { fundId: fund.id }),
+      ],
+    });
+    await database.notebooks.put(book);
+    return book;
+  });
+}
 export class AllowanceWarning extends Error {
   constructor() {
     super(
