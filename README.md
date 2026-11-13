@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-I open the local URL printed in my terminal to set up my starting balances and first savings fund.
+I open the local URL printed in my terminal to go straight to my notebook. New notebooks start with zero balances and a “My savings” fund. I can edit starting balances in History and manage funds in Savings.
 
 For a production build, including offline support, I run:
 
