@@ -147,7 +147,7 @@ describe("school schedules and fund requirements", () => {
       })),
     };
     const migrated = validateNotebook(legacy);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.periods[0].inferredSchedule).toBe(true);
     expect(migrated.periods[0].days[0].date).toBe("2026-11-16");
     expect(migrated.entries).toEqual(original.entries);

@@ -1,5 +1,5 @@
 import { Select } from "./Select";
-import { useEffect, useId, useRef, useState } from "react";
+import { Children, useEffect, useId, useRef, useState } from "react";
 import { Check, Wallet, Sprout, CalendarOff, RotateCcw } from "lucide-react";
 import { commit } from "./actions";
 import {
@@ -25,18 +25,38 @@ export function PeriodSelector({
   book,
   periodId,
   select,
+  presentation = "default",
 }: {
   book: Notebook;
   periodId?: string;
+  presentation?: "default" | "header";
   select(id: string): void;
 }) {
   const id = useId();
   if (!book.periods.length) return null;
   return (
-    <div className="period-selector">
-      <label htmlFor={id}>Allowance period</label>
+    <div
+      className={`period-selector ${presentation === "header" ? "period-selector-header" : ""}`}
+    >
+      <label
+        className={presentation === "header" ? "visually-hidden" : undefined}
+        htmlFor={id}
+      >
+        Allowance period
+      </label>
       <Select
         id={id}
+        renderLabel={(_, label) => (
+          <>
+            {Children.map(label, (part) =>
+              typeof part === "string" && part.includes("₱") ? (
+                <span className="money">{part}</span>
+              ) : (
+                part
+              ),
+            )}
+          </>
+        )}
         value={periodId}
         onChange={(event) => select(event.target.value)}
       >
@@ -46,14 +66,20 @@ export function PeriodSelector({
           );
           return (
             <option key={period.id} value={period.id}>
-              {periodTitle(book, period)} ·{" "}
-              {receipt?.date
-                ? new Date(`${receipt.date}T12:00:00`).toLocaleDateString(
-                    "en-PH",
-                    { month: "short", day: "numeric", year: "numeric" },
-                  )
-                : "No date"}{" "}
-              · {money(receipt?.amount ?? 0)}
+              {periodTitle(book, period)}
+              {presentation !== "header" && (
+                <>
+                  {" "}
+                  ·{" "}
+                  {receipt?.date
+                    ? new Date(`${receipt.date}T12:00:00`).toLocaleDateString(
+                        "en-PH",
+                        { month: "short", day: "numeric", year: "numeric" },
+                      )
+                    : "No date"}{" "}
+                  · {money(receipt?.amount ?? 0)}
+                </>
+              )}
             </option>
           );
         })}
@@ -70,6 +96,7 @@ function DayCheck({
   confirmAllowance,
   compact = false,
   savingsRow = false,
+  tableRow = false,
 }: {
   book: Notebook;
   period: AllowancePeriod;
@@ -77,6 +104,7 @@ function DayCheck({
   fund?: Fund;
   compact?: boolean;
   savingsRow?: boolean;
+  tableRow?: boolean;
   confirmAllowance(message: string): Promise<boolean>;
 }) {
   const hintId = useId();
@@ -167,7 +195,16 @@ function DayCheck({
       lock.current = false;
     }
   }
-  if (day.noClass)
+  if (day.noClass && tableRow)
+    return (
+      <>
+        <td>—</td>
+        <td>
+          <span className="savings-check-status is-unavailable">No class</span>
+        </td>
+      </>
+    );
+  if (day.noClass && !tableRow)
     return (
       <div className={`day-control ${savingsRow ? "savings-check-row" : ""}`}>
         <div className="day-check">
@@ -183,7 +220,7 @@ function DayCheck({
         </div>
       </div>
     );
-  return (
+  const control = (
     <div
       className={`day-control ${savingsRow ? "savings-check-row" : ""} ${fund ? "savings-control" : "allowance-control"} ${checked ? "is-checked" : ""}`}
     >
@@ -204,6 +241,7 @@ function DayCheck({
         />
         {!compact &&
           !savingsRow &&
+          !tableRow &&
           (fund ? (
             <Sprout aria-hidden="true" size={18} />
           ) : (
@@ -212,7 +250,9 @@ function DayCheck({
         <span className="day-control-name">
           <span
             className={
-              savingsRow || (compact && !fund) ? "visually-hidden" : undefined
+              savingsRow || tableRow || (compact && !fund)
+                ? "visually-hidden"
+                : undefined
             }
           >
             {fund?.name ?? "Allowance"}
@@ -221,7 +261,7 @@ function DayCheck({
             {day.noClass ? "—" : amount ? money(amount) : "Set amount"}
           </strong>
         </span>
-        {savingsRow && (
+        {savingsRow && !tableRow && (
           <span
             className={`savings-check-status ${day.noClass || (unavailable && !checked) ? "is-unavailable" : checked ? "is-saved" : "is-pending"}`}
           >
@@ -236,7 +276,7 @@ function DayCheck({
                     : "Pending"}
           </span>
         )}
-        {checked && !compact && !savingsRow && (
+        {checked && !compact && !savingsRow && !tableRow && (
           <Check size={16} aria-hidden="true" className="checked-mark" />
         )}
       </label>
@@ -244,6 +284,7 @@ function DayCheck({
         <p
           id={hintId}
           className={
+            tableRow ||
             (savingsRow && pending === null && (!unavailable || day.noClass)) ||
             (compact &&
               pending === null &&
@@ -265,6 +306,28 @@ function DayCheck({
       </span>
     </div>
   );
+  if (tableRow)
+    return (
+      <>
+        <td>{control}</td>
+        <td>
+          <span
+            className={`savings-check-status ${day.noClass || (unavailable && !checked) ? "is-unavailable" : checked ? "is-saved" : "is-pending"}`}
+          >
+            {pending !== null
+              ? "Saving…"
+              : day.noClass
+                ? "No class"
+                : checked
+                  ? "Saved"
+                  : unavailable
+                    ? "Unavailable"
+                    : "Pending"}
+          </span>
+        </td>
+      </>
+    );
+  return control;
 }
 
 export function DailyChecklist({
@@ -279,34 +342,51 @@ export function DailyChecklist({
   confirmAllowance(message: string): Promise<boolean>;
 }) {
   return (
-    <div
-      className="daily-checklist"
-      role="group"
+    <table
+      className="savings-days-table"
       aria-label={`${fund.name} savings days`}
     >
-      {period.days.map((_, index) => (
-        <section
-          className={`savings-day ${period.days[index].noClass ? "is-no-class" : book.entries.some((entry) => entry.kind === "deposit" && entry.periodId === period.id && entry.dayNumber === index + 1 && entry.fundId === fund.id) ? "is-saved" : ""}`}
-          key={index}
-          aria-label={`Day ${index + 1}`}
-        >
-          <h5>
-            <time dateTime={period.days[index].date}>
-              {schoolDate(period.days[index].date)}
-            </time>
-            <small>Day {index + 1}</small>
-          </h5>
-          <DayCheck
-            savingsRow
-            book={book}
-            period={period}
-            dayNumber={index + 1}
-            fund={fund}
-            confirmAllowance={confirmAllowance}
-          />
-        </section>
-      ))}
-    </div>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Savings</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {period.days.map((day, index) => (
+          <tr
+            key={index}
+            className={
+              day.noClass
+                ? "is-no-class"
+                : book.entries.some(
+                      (entry) =>
+                        entry.kind === "deposit" &&
+                        entry.periodId === period.id &&
+                        entry.dayNumber === index + 1 &&
+                        entry.fundId === fund.id,
+                    )
+                  ? "is-saved"
+                  : ""
+            }
+          >
+            <th scope="row">
+              <time dateTime={day.date}>{schoolDate(day.date)}</time>
+              <small>Day {index + 1}</small>
+            </th>
+            <DayCheck
+              tableRow
+              book={book}
+              period={period}
+              dayNumber={index + 1}
+              fund={fund}
+              confirmAllowance={confirmAllowance}
+            />
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -319,23 +399,11 @@ export function DailyCheckIn({
   period: AllowancePeriod;
   confirmAllowance(message: string): Promise<boolean>;
 }) {
-  const funds = book.funds.filter(
-    (fund) =>
-      (fund.savingMode === "fixed" && !fund.archived) ||
-      period.days.some((day) => day.requiredFunds?.includes(fund.id)) ||
-      book.entries.some(
-        (e) =>
-          e.periodId === period.id &&
-          e.fundId === fund.id &&
-          e.kind === "deposit",
-      ),
-  );
   return (
     <div className="allowance-days">
       <div className="allowance-columns" aria-hidden="true">
         <span>Date</span>
         <span>Allowance</span>
-        <span>Savings</span>
         <span>Actions</span>
       </div>
       <div className="checkin-days">
@@ -370,24 +438,6 @@ export function DailyCheckIn({
                   confirmAllowance={confirmAllowance}
                   compact
                 />
-              </div>
-              <div className="savings-cell">
-                <span className="mobile-column-label">Savings</span>
-                {funds.length ? (
-                  funds.map((fund) => (
-                    <DayCheck
-                      key={fund.id}
-                      book={book}
-                      period={period}
-                      dayNumber={index + 1}
-                      fund={fund}
-                      confirmAllowance={confirmAllowance}
-                      compact
-                    />
-                  ))
-                ) : (
-                  <span className="day-no-savings">No daily funds</span>
-                )}
               </div>
               <div className="day-actions">
                 <SkipDay
@@ -451,7 +501,7 @@ function SkipDay({
             setNotice(
               day.noClass
                 ? "School day restored."
-                : "No Class saved. No allowance deducted.",
+                : "No class saved. This day’s allowance is excluded from available allowance.",
             );
           } catch (e) {
             setError(

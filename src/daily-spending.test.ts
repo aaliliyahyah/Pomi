@@ -153,7 +153,7 @@ describe("actual daily spending", () => {
         })),
       };
       const migrated = validateNotebook(raw);
-      expect(migrated.version).toBe(4);
+      expect(migrated.version).toBe(5);
       expect(migrated.entries).toEqual(manual.entries);
       expect(totals(migrated)).toEqual(totals(manual));
       expect(migrated.periods[0].days.map((day) => day.accounting)).toEqual([

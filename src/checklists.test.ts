@@ -211,7 +211,7 @@ describe("daily allowance and savings", () => {
         notebook: legacy,
       }),
     );
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.periods).toEqual([]);
     expect(totals(migrated).allowance).toBe(30000);
     expect(migrated.entries).toEqual(legacy.entries);

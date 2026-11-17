@@ -112,12 +112,21 @@ const periodSchema = z.object({
 export type AllowancePeriod = z.infer<typeof periodSchema>;
 export const notebookSchema = z.object({
   id: z.literal("main"),
-  version: z.literal(4),
+  version: z.literal(5),
   currency: z.literal("PHP"),
   initialized: z.boolean(),
   funds: z.array(fundSchema).max(1000),
   entries: z.array(entrySchema).max(100_000),
   periods: z.array(periodSchema).max(10000).default([]),
+  deletedFunds: z
+    .array(
+      z.object({
+        fund: fundSchema,
+        entries: z.array(entrySchema),
+        deletedAt: z.string().datetime(),
+      }),
+    )
+    .default([]),
   preferences: preferencesSchema.default(() => preferencesSchema.parse({})),
 });
 export type Fund = z.infer<typeof fundSchema>;
@@ -140,12 +149,13 @@ export const labels: Record<Kind, string> = {
 export function emptyNotebook(): Notebook {
   return {
     id: "main",
-    version: 4,
+    version: 5,
     currency: "PHP",
     initialized: false,
     funds: [],
     entries: [],
     periods: [],
+    deletedFunds: [],
     preferences: preferencesSchema.parse({}),
   };
 }
@@ -224,7 +234,7 @@ export function validateNotebook(input: unknown): Notebook {
     const periods = object?.version === 1 ? [] : object?.periods;
     candidate = {
       ...object,
-      version: 4,
+      version: 5,
       periods: Array.isArray(periods)
         ? periods.map((period) => {
             if (
@@ -247,12 +257,43 @@ export function validateNotebook(input: unknown): Notebook {
         : periods,
     };
   }
+  if (object?.version === 4)
+    candidate = { ...object, version: 5, deletedFunds: [] };
   const parsed = notebookSchema.safeParse(candidate);
   if (!parsed.success)
     throw new Error(
       `Invalid notebook: ${parsed.error.issues[0]?.message ?? "check its format."}`,
     );
   const book = parsed.data;
+  const deletedIds = new Set<string>();
+  const entryIds = new Set(book.entries.map((entry) => entry.id));
+  for (const item of book.deletedFunds) {
+    if (
+      deletedIds.has(item.fund.id) ||
+      book.funds.some((fund) => fund.id === item.fund.id)
+    )
+      throw new Error(
+        "A deleted fund has a duplicate identifier. Choose another backup.",
+      );
+    deletedIds.add(item.fund.id);
+    if (
+      item.entries.length > 1 ||
+      item.entries.some(
+        (entry) =>
+          entry.kind !== "opening_savings" ||
+          entry.amount !== 0 ||
+          entry.fundId !== item.fund.id ||
+          entry.periodId ||
+          entry.allowancePeriodId ||
+          entryIds.has(entry.id),
+      )
+    )
+      throw new Error(
+        "Deleted funds may only contain an empty starting balance. Choose another backup.",
+      );
+    for (const entry of item.entries) entryIds.add(entry.id);
+    item.fund.savingMode ??= item.fund.dailyAmount ? "fixed" : "flexible";
+  }
   // Normalize optional fields for existing notebooks and callers, without touching money records.
   for (const fund of book.funds)
     fund.savingMode ??= fund.dailyAmount ? "fixed" : "flexible";
@@ -304,7 +345,10 @@ export function validateNotebook(input: unknown): Notebook {
   validatePeriods(book);
   if (
     !book.initialized &&
-    (book.funds.length || book.entries.length || book.periods.length)
+    (book.funds.length ||
+      book.entries.length ||
+      book.periods.length ||
+      book.deletedFunds.length)
   )
     throw new Error("This notebook has not completed setup.");
   const balances = totals(book);
@@ -357,7 +401,13 @@ export function withoutEntry(book: Notebook, id: string): Notebook {
 }
 const backupSchema = z.object({
   app: z.literal("pomi"),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  version: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ]),
   exportedAt: z.string().datetime(),
   notebook: z.unknown(),
 });
@@ -365,7 +415,7 @@ export function exportBackup(book: Notebook): string {
   return JSON.stringify(
     {
       app: "pomi",
-      version: 4,
+      version: 5,
       exportedAt: new Date().toISOString(),
       notebook: validateNotebook(book),
     },
@@ -384,7 +434,7 @@ export function importBackup(raw: string): Notebook {
   }
   const result = backupSchema.safeParse(value);
   if (!result.success)
-    throw new Error("This is not a supported Pomi backup (versions 1–4, PHP).");
+    throw new Error("This is not a supported Pomi backup (versions 1–5, PHP).");
   const book = validateNotebook(result.data.notebook);
   if (!book.initialized)
     throw new Error("This backup has not completed setup.");
@@ -454,6 +504,40 @@ export function periodRemaining(
       .reduce((sum, entry) => sum + entry.amount, 0)
   );
 }
+/** Cash outside daily budgets; ledger totals remain actual money movements. */
+export function allowanceAllocation(book: Notebook, period: AllowancePeriod) {
+  const given =
+    book.entries.find((e) => e.periodId === period.id && e.kind === "allowance")
+      ?.amount ?? 0;
+  const noClass = period.days.reduce(
+    (sum, day) => sum + (day.noClass ? period.dailyAmount : 0),
+    0,
+  );
+  const reserved = period.days.reduce(
+    (sum, day, index) =>
+      sum +
+      (day.amount !== null && !day.noClass
+        ? Math.max(0, dailyBalance(book, period, index + 1).remaining)
+        : 0),
+    0,
+  );
+  return {
+    given,
+    noClass,
+    reserved,
+    available: periodRemaining(book, period) - reserved - noClass,
+  };
+}
+export function availableAllowance(book: Notebook): number {
+  return (
+    totals(book).allowance -
+    book.periods.reduce((sum, period) => {
+      const allocation = allowanceAllocation(book, period);
+      return sum + allocation.reserved + allocation.noClass;
+    }, 0)
+  );
+}
+
 function validatePeriods(book: Notebook) {
   const periods = new Map(book.periods.map((period) => [period.id, period]));
   if (periods.size !== book.periods.length)
@@ -657,7 +741,7 @@ export function setAllowanceDay(
     !checked &&
     dayEntries(next, periodId, dayNumber).some((e) => e.kind === "deposit")
   )
-    throw new Error("Uncheck this day's savings in every fund first.");
+    throw new Error("Uncheck this day's savings on the Savings page first.");
   if (
     !checked &&
     next.entries.some(
@@ -807,5 +891,63 @@ export function deleteFund(book: Notebook, fundId: string): Notebook {
     ...book,
     funds: book.funds.filter((f) => f.id !== fundId),
     entries: book.entries.filter((e) => e.fundId !== fundId),
+    deletedFunds: [
+      ...book.deletedFunds,
+      {
+        fund: book.funds.find((fund) => fund.id === fundId)!,
+        entries: book.entries.filter((entry) => entry.fundId === fundId),
+        deletedAt: new Date().toISOString(),
+      },
+    ],
+  });
+}
+
+export function restoreDeletedFund(book: Notebook, fundId: string): Notebook {
+  const item = book.deletedFunds.find((item) => item.fund.id === fundId);
+  if (!item)
+    throw new Error(
+      "This deleted fund is no longer available. Refresh Settings.",
+    );
+  if (
+    book.funds.some(
+      (fund) =>
+        fund.name.toLocaleLowerCase() === item.fund.name.toLocaleLowerCase(),
+    )
+  )
+    throw new Error(
+      "Another fund uses this name. Rename that fund in Savings, then restore again.",
+    );
+  return validateNotebook({
+    ...book,
+    funds: [...book.funds, { ...item.fund, archived: false }],
+    entries: [...book.entries, ...item.entries],
+    deletedFunds: book.deletedFunds.filter((item) => item.fund.id !== fundId),
+  });
+}
+export function permanentlyDeleteFund(
+  book: Notebook,
+  fundId: string,
+): Notebook {
+  if (!book.deletedFunds.some((item) => item.fund.id === fundId))
+    throw new Error(
+      "This deleted fund is no longer available. Refresh Settings.",
+    );
+  return validateNotebook({
+    ...book,
+    deletedFunds: book.deletedFunds.filter((item) => item.fund.id !== fundId),
+  });
+}
+export function setFundArchived(
+  book: Notebook,
+  fundId: string,
+  archived: boolean,
+): Notebook {
+  if (!book.funds.some((fund) => fund.id === fundId))
+    throw new Error("This fund is no longer available. Refresh Settings.");
+  return validateNotebook({
+    ...book,
+    funds: book.funds.map((fund) =>
+      fund.id === fundId ? { ...fund, archived } : fund,
+    ),
   });
 }

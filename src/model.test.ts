@@ -131,7 +131,7 @@ describe("backup validation", () => {
     expect(() => importBackup("{")).toThrow("valid JSON");
     expect(() =>
       importBackup(
-        exportBackup(notebook()).replace('"version": 4', '"version": 9'),
+        exportBackup(notebook()).replace('"version": 5', '"version": 9'),
       ),
     ).toThrow("supported");
     const book = notebook();

@@ -111,7 +111,7 @@ describe("checklist persistence", () => {
     };
     await db.notebooks.put(legacy as unknown as import("./model").Notebook);
     const book = await openNotebook(db);
-    expect(book.version).toBe(4);
+    expect(book.version).toBe(5);
     expect(book.periods).toEqual([]);
     expect(book.entries).toEqual(legacy.entries);
     expect(await db.notebooks.get("main")).toEqual(book);
