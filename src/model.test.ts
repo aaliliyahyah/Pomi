@@ -12,7 +12,13 @@ import {
   withoutEntry,
   type Notebook,
 } from "./model";
-const fund = { id: "rain", name: "Rainy day", goal: 10000, archived: false };
+const fund = {
+  id: "rain",
+  name: "Rainy day",
+  goal: 10000,
+  archived: false,
+  savingMode: "flexible" as const,
+};
 function notebook(): Notebook {
   return {
     ...emptyNotebook(),
@@ -125,7 +131,7 @@ describe("backup validation", () => {
     expect(() => importBackup("{")).toThrow("valid JSON");
     expect(() =>
       importBackup(
-        exportBackup(notebook()).replace('"version": 1', '"version": 9'),
+        exportBackup(notebook()).replace('"version": 4', '"version": 9'),
       ),
     ).toThrow("supported");
     const book = notebook();
