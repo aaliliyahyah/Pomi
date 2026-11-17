@@ -2951,34 +2951,80 @@ export default function App() {
             </div>
           )}
           {page === "history" && (
-            <>
-              <header className="page-heading">
-                <span className="eyebrow">EVERY LITTLE NOTE</span>
-                <h1>
-                  My money history<span>.</span>
-                </h1>
-                <p>A record of what came in, went out, and stayed for later.</p>
+            <div className="history-page">
+              <header className="page-heading action-heading history-heading">
+                <div>
+                  <h1 tabIndex={-1}>
+                    Money history<span>.</span>
+                    <Sticker kind="bow" />
+                  </h1>
+                  <p>
+                    A record of what came in, went out, and stayed for later.
+                  </p>
+                </div>
               </header>
-              <div className="filters">
-                <label>
-                  Fund
-                  <select
+              <div
+                className="history-summary summary-group summary-group-four"
+                aria-label="Transaction totals"
+              >
+                <section className="history-received financial-summary summary-allowance">
+                  <div className="summary-content">
+                    <h2 className="summary-label">Allowance received</h2>
+                    <strong className="summary-amount">
+                      {money(historySummary.received)}
+                    </strong>
+                  </div>
+                </section>
+                <section className="history-spent financial-summary summary-spending">
+                  <div className="summary-content">
+                    <h2 className="summary-label">Total expenses</h2>
+                    <strong className="summary-amount">
+                      {money(historySummary.expenses)}
+                    </strong>
+                  </div>
+                </section>
+                <section className="history-deposited financial-summary summary-savings">
+                  <div className="summary-content">
+                    <h2 className="summary-label">Savings deposits</h2>
+                    <strong className="summary-amount">
+                      {money(historySummary.deposits)}
+                    </strong>
+                  </div>
+                </section>
+                <section className="history-withdrawn financial-summary summary-neutral">
+                  <div className="summary-content">
+                    <h2 className="summary-label">Withdrawals</h2>
+                    <strong className="summary-amount">
+                      {money(historySummary.withdrawals)}
+                    </strong>
+                  </div>
+                </section>
+              </div>
+              <section
+                className="filters history-filters"
+                aria-label="History filters"
+              >
+                <div className="select-field">
+                  <label htmlFor="select-6">Fund</label>
+                  <Select
+                    id="select-6"
                     value={fundFilter}
                     onChange={(event) => setFundFilter(event.target.value)}
                   >
                     <option value="">All accounts</option>
                     <option value="allowance">Allowance only</option>
-                    {book.funds.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                        {f.archived ? " (archived)" : ""}
+                    {book.funds.map((fund) => (
+                      <option key={fund.id} value={fund.id}>
+                        {fund.name}
+                        {fund.archived ? " (archived)" : ""}
                       </option>
                     ))}
-                  </select>
-                </label>
-                <label>
-                  Entry type
-                  <select
+                  </Select>
+                </div>
+                <div className="select-field">
+                  <label htmlFor="select-7">Entry type</label>
+                  <Select
+                    id="select-7"
                     value={typeFilter}
                     onChange={(event) => setTypeFilter(event.target.value)}
                   >
@@ -2988,51 +3034,93 @@ export default function App() {
                         {label}
                       </option>
                     ))}
-                  </select>
-                </label>
-                <label>
+                  </Select>
+                </div>
+                <label htmlFor="history-from">
                   From
                   <input
+                    id="history-from"
                     type="date"
                     value={from}
+                    aria-invalid={invalidHistoryRange || undefined}
+                    aria-describedby={
+                      invalidHistoryRange ? "history-range-error" : undefined
+                    }
                     onChange={(event) => setFrom(event.target.value)}
                   />
                 </label>
-                <label>
+                <label htmlFor="history-to">
                   To
                   <input
+                    id="history-to"
                     type="date"
                     value={to}
                     min={from || undefined}
+                    aria-invalid={invalidHistoryRange || undefined}
+                    aria-describedby={
+                      invalidHistoryRange ? "history-range-error" : undefined
+                    }
                     onChange={(event) => setTo(event.target.value)}
                   />
                 </label>
-              </div>
-              {from && to && from > to && (
-                <p role="alert" className="error">
+                {hasHistoryFilters && (
+                  <button
+                    className="button quiet history-filters-clear"
+                    onClick={clearHistoryFilters}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </section>
+              {invalidHistoryRange && (
+                <p role="alert" className="error" id="history-range-error">
                   Choose an end date on or after the start date.
                 </p>
               )}
-              <section className="panel history-panel">
+              <section
+                className="panel history-panel"
+                aria-label="Transaction history"
+              >
+                <div className="section-title history-list-heading">
+                  <h2 id="history-transactions-title" tabIndex={-1}>
+                    Transactions ({historyTransactions.length})
+                  </h2>
+                  <div className="history-sort">
+                    <label htmlFor="history-sort">Sort by</label>
+                    <Select
+                      id="history-sort"
+                      value={historyOrder}
+                      onChange={(event) => setHistoryOrder(event.target.value)}
+                    >
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                    </Select>
+                  </div>
+                </div>
+                <p className="visually-hidden" role="status">
+                  {historyTransactions.length}{" "}
+                  {historyTransactions.length === 1
+                    ? "transaction"
+                    : "transactions"}{" "}
+                  · {historyEntries.length - historyTransactions.length}{" "}
+                  starting balances ·{" "}
+                  {hasHistoryFilters
+                    ? "Filters active"
+                    : "All accounts and types"}
+                </p>
                 <EntryList
-                  entries={sorted.filter(
-                    (e) =>
-                      (!fundFilter ||
-                        (fundFilter === "allowance"
-                          ? !e.fundId ||
-                            e.kind === "return" ||
-                            e.source === "allowance"
-                          : e.fundId === fundFilter)) &&
-                      (!typeFilter || e.kind === typeFilter) &&
-                      (!from || e.date >= from) &&
-                      (!to || e.date <= to),
-                  )}
+                  history
+                  oldestFirst={historyOrder === "oldest"}
+                  clearFilters={
+                    hasHistoryFilters ? clearHistoryFilters : undefined
+                  }
+                  entries={historyEntries}
                   book={book}
                   edit={editEntry}
                   remove={removeEntry}
                 />
               </section>
-            </>
+            </div>
           )}
           {page === "settings" && (
             <SettingsPage
