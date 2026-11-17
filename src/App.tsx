@@ -13,25 +13,57 @@ import {
   ArrowDownToLine,
   ArrowLeftRight,
   ArrowUpRight,
+  Pencil,
+  Trash2,
   Check,
+  CalendarDays,
+  CalendarCheck,
   ChevronRight,
+  ChevronDown,
   Download,
-  Ellipsis,
   History,
   House,
   Leaf,
-  NotebookPen,
   Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Sprout,
+  Ellipsis,
   Sun,
   Upload,
   Wallet,
-  WifiOff,
   X,
 } from "lucide-react";
-import { AllowanceWarning, changeNotebook, db, openNotebook } from "./db";
+import { changeNotebook, db, openNotebook } from "./db";
+import { commit } from "./actions";
 import {
+  ActionMenu,
+  SchoolWeekdays,
+  SavingsReminder,
+  CheckInLink,
+  WeeklySavings,
+} from "./dashboard-ui";
+import { Select } from "./Select";
+import { Sticker } from "./Stickers";
+import {
+  DailyChecklist,
+  DailyCheckIn,
+  PeriodSelector,
+  periodTitle,
+} from "./check-in";
+import {
+  savePeriod,
+  dailyBalance,
+  dayStatus,
+  schoolDates,
+  deleteFund,
+  canDeleteFund,
+  preferencesSchema,
+  removePeriod,
+  setAllowanceDay,
+  setSavingsDay,
+  type AllowancePeriod,
   exportBackup,
   importBackup,
   labels,
@@ -49,17 +81,31 @@ import {
   type Notebook,
 } from "./model";
 
-type Page = "home" | "savings" | "history" | "settings";
+type Page =
+  "home" | "allowance" | "expenses" | "savings" | "history" | "settings";
 type ModalState =
-  | { type: "entry"; kind: Kind; entry?: Entry; fundId?: string }
+  | {
+      type: "entry";
+      kind: Kind;
+      entry?: Entry;
+      fundId?: string;
+      allowancePeriodId?: string;
+      allowanceDayNumber?: number;
+    }
   | { type: "fund"; fund?: Fund }
+  | { type: "period"; periodId?: string }
   | null;
 type InstallEvent = Event & {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: string }>;
 };
+type PendingAllowanceConfirmation = {
+  message: string;
+  resolve(confirmed: boolean): void;
+};
 const pages: { id: Page; label: string; icon: typeof House }[] = [
   { id: "home", label: "Home", icon: House },
+  { id: "allowance", label: "Allowance", icon: Wallet },
   { id: "savings", label: "Savings", icon: Sprout },
   { id: "history", label: "History", icon: History },
   { id: "settings", label: "Settings", icon: Settings },
@@ -72,8 +118,10 @@ const text = (data: FormData, key: string) => String(data.get(key) ?? "");
 const amountText = (amount: number) => (amount / 100).toFixed(2);
 const errorMessage = (error: unknown) =>
   error instanceof Error
-    ? error.message
-    : "Something went wrong. Please try again.";
+    ? error.message === "Every fund needs a unique name and ID."
+      ? "That fund name is already in use. Enter a different name."
+      : error.message
+    : "Unable to save. Try again.";
 const displayDate = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString("en-PH", {
     month: "short",
@@ -81,17 +129,6 @@ const displayDate = (date: string) =>
     year: "numeric",
   });
 
-async function commit(change: (book: Notebook) => Notebook): Promise<boolean> {
-  try {
-    await changeNotebook(change);
-    return true;
-  } catch (error) {
-    if (!(error instanceof AllowanceWarning)) throw error;
-    if (!window.confirm(error.message)) return false;
-    await changeNotebook(change, true);
-    return true;
-  }
-}
 function Modal({
   title,
   children,
@@ -104,7 +141,16 @@ function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
-    ref.current?.showModal();
+    const trigger =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const dialog = ref.current;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (trigger?.isConnected) trigger.focus();
+    };
   }, []);
   return (
     <dialog
@@ -138,10 +184,12 @@ function Form({
   children,
   submit,
   label = "Save entry",
+  onChange,
 }: {
   children: ReactNode;
   submit(data: FormData): Promise<void>;
   label?: string;
+  onChange?(data: FormData): void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -163,7 +211,15 @@ function Form({
     }
   }
   return (
-    <form onSubmit={handle}>
+    <form
+      onSubmit={handle}
+      onChange={
+        onChange
+          ? (event) => onChange(new FormData(event.currentTarget))
+          : undefined
+      }
+      aria-busy={busy}
+    >
       <fieldset disabled={busy}>{children}</fieldset>
       {error && (
         <p className="error" role="alert">
@@ -192,12 +248,16 @@ function AmountField({
   allowZero?: boolean;
   name?: string;
 }) {
+  const [validation, setValidation] = useState("");
+  const errorId = useId();
+  const inputId = useId();
   return (
-    <label>
-      {label}
+    <div className="amount-field">
+      <label htmlFor={inputId}>{label}</label>
       <span className="money-input">
         <span aria-hidden="true">₱</span>
         <input
+          id={inputId}
           name={name}
           type="number"
           inputMode="decimal"
@@ -205,11 +265,32 @@ function AmountField({
           min={allowZero ? "0" : "0.01"}
           max="1000000000"
           required
+          aria-invalid={validation ? true : undefined}
+          aria-describedby={validation ? errorId : undefined}
+          onInvalid={(event) =>
+            setValidation(event.currentTarget.validationMessage)
+          }
           defaultValue={value}
           placeholder="0.00"
+          onInput={(event) => {
+            const input = event.currentTarget;
+            setValidation("");
+            input.setCustomValidity("");
+            if (input.value)
+              try {
+                parseAmount(input.value, allowZero);
+              } catch (error) {
+                input.setCustomValidity(errorMessage(error));
+              }
+          }}
         />
       </span>
-    </label>
+      {validation && (
+        <span className="field-error" id={errorId}>
+          {validation}
+        </span>
+      )}
+    </div>
   );
 }
 function Empty({
@@ -224,7 +305,7 @@ function Empty({
   return (
     <div className="empty">
       <span className="empty-icon">
-        <NotebookPen size={25} />
+        <Sticker kind="heart" />
       </span>
       <h3>{title}</h3>
       <p>{children}</p>
@@ -232,22 +313,292 @@ function Empty({
     </div>
   );
 }
+function SavingsChecklists({
+  book,
+  fund,
+  edit,
+  period,
+  confirmAllowance,
+}: {
+  book: Notebook;
+  fund: Fund;
+  period?: AllowancePeriod;
+  edit(): void;
+  confirmAllowance(message: string): Promise<boolean>;
+}) {
+  return (
+    <div className="savings-checklists">
+      {!fund.dailyAmount && fund.savingMode === "fixed" && (
+        <button className="button quiet" onClick={edit}>
+          Set daily savings amount
+        </button>
+      )}
+      {!book.periods.length && (
+        <p className="field-help">
+          <a href="#allowance">Add an allowance period</a> to create your
+          savings days.
+        </p>
+      )}
+      {period && (
+        <DailyChecklist
+          book={book}
+          period={period}
+          fund={fund}
+          confirmAllowance={confirmAllowance}
+        />
+      )}
+    </div>
+  );
+}
+
+function GoalProgress({
+  balance,
+  goal,
+  name,
+}: {
+  balance: number;
+  goal: number;
+  name: string;
+}) {
+  const percent = Math.min(
+    100,
+    Math.max(0, Math.round((balance / goal) * 100)),
+  );
+  return (
+    <div className="fund-goal-progress">
+      <div className="goal-caption">
+        <span>
+          {money(balance)} of {money(goal)}
+        </span>
+        <span>{percent}%</span>
+      </div>
+      <progress
+        className="goal-meter"
+        aria-label={`${name} goal progress`}
+        max={goal}
+        value={Math.max(0, Math.min(balance, goal))}
+      />
+    </div>
+  );
+}
+
+function PeriodEditor({
+  book,
+  periodId,
+  close,
+  saved,
+  selected,
+  confirmAllowance,
+}: {
+  book: Notebook;
+  periodId?: string;
+  close(): void;
+  saved(message: string): void;
+  selected(id: string): void;
+  confirmAllowance(message: string): Promise<boolean>;
+}) {
+  const [newId] = useState(() => crypto.randomUUID());
+  const period = book.periods.find((p) => p.id === periodId);
+  const receipt = periodId
+    ? book.entries.find(
+        (e) => e.periodId === periodId && e.kind === "allowance",
+      )
+    : undefined;
+  const [preview, setPreview] = useState<{
+    allocated: number;
+    leftover: number;
+  } | null>(() => {
+    if (!period || !receipt) return null;
+    const allocated = period.days.reduce(
+      (sum, day) => sum + (day.amount ?? period.dailyAmount),
+      0,
+    );
+    return { allocated, leftover: receipt.amount - allocated };
+  });
+  function updatePreview(data: FormData) {
+    try {
+      const total = parseAmount(text(data, "total"));
+      const daily = parseAmount(text(data, "dailyAmount"));
+      const count = Number(text(data, "dayCount"));
+      if (!Number.isInteger(count) || count < 1 || count > 10000)
+        return setPreview(null);
+      const completed =
+        period?.days.slice(0, count).filter((day) => day.amount !== null) ?? [];
+      const allocated =
+        completed.reduce((sum, day) => sum + day.amount!, 0) +
+        (count - completed.length) * daily;
+      setPreview({ allocated, leftover: total - allocated });
+    } catch {
+      setPreview(null);
+    }
+  }
+  return (
+    <Modal
+      title={periodId ? "Edit allowance period" : "Add allowance"}
+      close={close}
+    >
+      <Form
+        label="Save allowance"
+        onChange={updatePreview}
+        submit={async (data) => {
+          const input = {
+            id: periodId ?? newId,
+            dailyAmount: parseAmount(text(data, "dailyAmount")),
+            total: parseAmount(text(data, "total")),
+            dayCount: Number(text(data, "dayCount")),
+            date: text(data, "date"),
+            note: text(data, "note").trim(),
+            startDate: text(data, "startDate"),
+            schoolDays: data.getAll("schoolDays").map(Number),
+          };
+          if (
+            await commit(
+              (current) => savePeriod(current, input, !!periodId),
+              confirmAllowance,
+            )
+          ) {
+            selected(input.id);
+            saved("Allowance period saved.");
+            close();
+          }
+        }}
+      >
+        <p className="form-intro">
+          Enter what you received and how you plan to use it.
+        </p>
+        <AmountField
+          label="Total allowance given"
+          name="total"
+          value={receipt ? amountText(receipt.amount) : undefined}
+        />
+        <AmountField
+          label="Daily allowance amount"
+          name="dailyAmount"
+          value={
+            period
+              ? amountText(period.dailyAmount)
+              : book.preferences.allowanceAmount
+                ? amountText(book.preferences.allowanceAmount)
+                : undefined
+          }
+        />
+        <label>
+          Number of days
+          <input
+            name="dayCount"
+            type="number"
+            min="1"
+            max="10000"
+            step="1"
+            required
+            defaultValue={period?.days.length}
+          />
+        </label>
+        <div className="allowance-preview" role="status">
+          {preview ? (
+            <>
+              <span>
+                Total for planned days{" "}
+                <strong>{money(preview.allocated)}</strong>
+              </span>
+              <span>
+                {preview.leftover < 0
+                  ? "More than the total received"
+                  : "Left after planned days"}
+                <strong>{money(Math.abs(preview.leftover))}</strong>
+              </span>
+              {preview.leftover < 0 && (
+                <p>
+                  These days need more than you received. Adjust the amounts, or
+                  continue if you intend to use existing allowance.
+                </p>
+              )}
+            </>
+          ) : (
+            <p>Enter all three amounts to preview your plan.</p>
+          )}
+        </div>
+        <label>
+          Date
+          <input
+            name="date"
+            type="date"
+            required
+            defaultValue={receipt?.date ?? localDate()}
+          />
+        </label>
+        <label>
+          School start date
+          <input
+            type="date"
+            name="startDate"
+            required
+            defaultValue={period?.startDate ?? localDate()}
+          />
+        </label>
+        {period?.inferredSchedule && (
+          <p className="field-help">
+            Dates were inferred from the receipt using Monday–Friday. Confirm or
+            correct the schedule here. Existing transaction dates stay
+            unchanged.
+          </p>
+        )}
+        <SchoolWeekdays
+          value={period?.schoolDays ?? book.preferences.schoolDays}
+        />
+        <SchedulePreview period={period} />
+        <label>
+          Note <span className="optional">optional</span>
+          <textarea
+            name="note"
+            maxLength={500}
+            defaultValue={receipt?.note}
+            placeholder="e.g. School allowance"
+          />
+        </label>
+        <p className="field-help">
+          The total can differ from the daily amount × days. Completed days keep
+          their original amount. Uncheck a completed day before removing it.
+        </p>
+      </Form>
+    </Modal>
+  );
+}
 function EntryEditor({
   state,
   book,
   close,
   saved,
+  confirmAllowance,
 }: {
   state: Extract<ModalState, { type: "entry" }>;
   book: Notebook;
   close(): void;
   saved(message: string): void;
+  confirmAllowance(message: string): Promise<boolean>;
 }) {
   const existing = state.entry;
   const kind = existing?.kind ?? state.kind;
   const needsFund = ["deposit", "return", "spend", "opening_savings"].includes(
     kind,
   );
+  const [expensePeriod, setExpensePeriod] = useState(
+    existing
+      ? (existing.allowancePeriodId ?? "")
+      : (state.allowancePeriodId ?? book.periods.at(-1)?.id ?? ""),
+  );
+  const [expenseDay, setExpenseDay] = useState(
+    String(existing?.allowanceDayNumber ?? state.allowanceDayNumber ?? ""),
+  );
+  const expenseAllowance = book.periods.find(
+    (period) => period.id === expensePeriod,
+  );
+  const initialDate =
+    existing?.date ??
+    (state.allowanceDayNumber
+      ? expenseAllowance?.days[state.allowanceDayNumber - 1]?.date
+      : undefined) ??
+    localDate();
   const [source, setSource] = useState(existing?.source ?? "allowance");
   const [withdrawal, setWithdrawal] = useState<Kind>(
     kind === "spend" ? "spend" : "return",
@@ -269,7 +620,7 @@ function EntryEditor({
         existing
           ? "Edit entry"
           : isWithdrawal
-            ? "Take out savings"
+            ? "Withdraw savings"
             : labels[kind]
       }
       close={close}
@@ -287,6 +638,14 @@ function EntryEditor({
               note: text(data, "note").trim(),
               fundId: needsFund ? selectedFund : null,
               source: kind === "deposit" ? source : null,
+              ...(kind === "expense" && expensePeriod
+                ? {
+                    allowancePeriodId: expensePeriod,
+                    ...(expenseDay
+                      ? { allowanceDayNumber: Number(expenseDay) }
+                      : {}),
+                  }
+                : {}),
             },
           );
           if (
@@ -304,7 +663,7 @@ function EntryEditor({
                   "This fund is archived. Restore it before adding savings.",
                 );
               return withEntry(current, entry);
-            })
+            }, confirmAllowance)
           ) {
             saved(existing ? "Entry updated." : "A little note, saved.");
             close();
@@ -312,9 +671,11 @@ function EntryEditor({
         }}
       >
         {needsFund && (
-          <label>
-            Savings fund
-            <select
+          <div className="select-field">
+            <label htmlFor="select-1">Savings fund</label>
+            <Select
+              id="select-1"
+              aria-describedby="select-1-hint"
               name="fundId"
               value={selectedFund}
               onChange={(event) => setSelectedFund(event.target.value)}
@@ -330,20 +691,78 @@ function EntryEditor({
                   {f.archived ? " (archived)" : ""}
                 </option>
               ))}
-            </select>
-            <span className="field-help">
+            </Select>
+            <span className="field-help" id="select-1-hint">
               Current balance: {money(balance)}
             </span>
-          </label>
+          </div>
         )}
         <AmountField
           value={existing ? amountText(existing.amount) : undefined}
           allowZero={kind.startsWith("opening_")}
         />
+        {kind === "expense" && book.periods.length > 0 && (
+          <div className="select-field">
+            <label htmlFor="select-2">Allowance period</label>
+            <Select
+              id="select-2"
+              aria-describedby="select-2-hint"
+              value={expensePeriod}
+              onChange={(event) => {
+                setExpensePeriod(event.target.value);
+                setExpenseDay("");
+              }}
+            >
+              <option value="">General allowance</option>
+              {book.periods.map((period) => (
+                <option key={period.id} value={period.id}>
+                  {periodTitle(book, period)}
+                </option>
+              ))}
+            </Select>
+            <span className="field-help" id="select-2-hint">
+              Choose a period and, optionally, a started day for this expense.
+            </span>
+          </div>
+        )}
+        {kind === "expense" && expenseAllowance && (
+          <div className="select-field">
+            <label htmlFor="expense-day">Allowance day</label>
+            <Select
+              id="expense-day"
+              value={expenseDay}
+              onChange={(event) => setExpenseDay(event.target.value)}
+              aria-describedby="expense-day-hint"
+            >
+              <option value="">Not assigned to a day</option>
+              {expenseAllowance.days.map((day, index) => (
+                <option
+                  key={index}
+                  value={String(index + 1)}
+                  disabled={day.amount === null || day.noClass}
+                >
+                  {day.date ? displayDate(day.date) : "No date"} · Day{" "}
+                  {index + 1}
+                  {day.noClass
+                    ? " · No Class"
+                    : day.amount === null
+                      ? " · Not started"
+                      : ""}
+                </option>
+              ))}
+            </Select>
+            <span id="expense-day-hint" className="field-help">
+              Start a day in Allowance before assigning expenses. Unassigned
+              expenses affect the overall balance.
+            </span>
+          </div>
+        )}
         {kind === "deposit" && (
-          <label>
-            Where is this money from?
-            <select
+          <div className="select-field">
+            <label htmlFor="select-3">Where is this money from?</label>
+            <Select
+              id="select-3"
+              aria-describedby="select-3-hint"
               value={source}
               onChange={(event) =>
                 setSource(event.target.value as "allowance" | "extra")
@@ -351,39 +770,36 @@ function EntryEditor({
             >
               <option value="allowance">My allowance</option>
               <option value="extra">Extra money</option>
-            </select>
-            <span className="field-help">
+            </Select>
+            <span className="field-help" id="select-3-hint">
               {source === "allowance"
                 ? "This also reduces your available allowance."
                 : "Your allowance balance stays the same."}
             </span>
-          </label>
+          </div>
         )}
         {isWithdrawal && (
-          <label>
-            Where is this money going?
-            <select
+          <div className="select-field">
+            <label htmlFor="select-4">Where is this money going?</label>
+            <Select
+              id="select-4"
+              aria-describedby="select-4-hint"
               value={withdrawal}
               onChange={(event) => setWithdrawal(event.target.value as Kind)}
             >
               <option value="return">Back to my allowance</option>
               <option value="spend">Spent directly from savings</option>
-            </select>
-            <span className="field-help">
+            </Select>
+            <span className="field-help" id="select-4-hint">
               {withdrawal === "return"
                 ? "This increases your available allowance."
                 : "This records spending without changing your allowance."}
             </span>
-          </label>
+          </div>
         )}
         <label>
           Date
-          <input
-            name="date"
-            type="date"
-            required
-            defaultValue={existing?.date ?? localDate()}
-          />
+          <input name="date" type="date" required defaultValue={initialDate} />
         </label>
         <label>
           Note <span className="optional">optional</span>
@@ -401,16 +817,21 @@ function EntryEditor({
 }
 function FundEditor({
   fund,
+  book,
   close,
   saved,
 }: {
   fund?: Fund;
+  book: Notebook;
   close(): void;
   saved(message: string): void;
 }) {
+  const [mode, setMode] = useState<"fixed" | "flexible">(
+    fund?.savingMode ?? "fixed",
+  );
   return (
     <Modal
-      title={fund ? "Edit savings fund" : "Something to save for"}
+      title={fund ? "Edit savings fund" : "Create savings fund"}
       close={close}
     >
       <Form
@@ -423,6 +844,11 @@ function FundEditor({
               ? parseAmount(text(data, "goal"))
               : null,
             archived: fund?.archived ?? false,
+            dailyAmount:
+              mode === "fixed"
+                ? parseAmount(text(data, "dailyAmount"))
+                : (fund?.dailyAmount ?? null),
+            savingMode: mode,
           };
           const initial = fund
             ? null
@@ -448,7 +874,7 @@ function FundEditor({
                 : current.entries,
             };
           });
-          saved(fund ? "Fund updated." : "A new little beginning.");
+          saved(fund ? "Fund updated." : "Savings fund created.");
           close();
         }}
       >
@@ -462,28 +888,67 @@ function FundEditor({
             defaultValue={fund?.name}
           />
         </label>
-        <label>
-          Goal amount <span className="optional">optional</span>
-          <span className="money-input">
-            <span>₱</span>
-            <input
-              name="goal"
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              max="1000000000"
-              step="0.01"
-              placeholder="No goal needed"
-              defaultValue={fund?.goal ? amountText(fund.goal) : ""}
-            />
-          </span>
-        </label>
-        {!fund && <AmountField label="Already saved" value="0.00" allowZero />}
+        <div className="select-field">
+          <label htmlFor="select-5">Saving frequency</label>
+          <Select
+            id="select-5"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "fixed" | "flexible")}
+          >
+            <option value="fixed">Fixed daily</option>
+            <option value="flexible">Flexible — save any amount</option>
+          </Select>
+        </div>
+        {mode === "fixed" && (
+          <AmountField
+            label="Daily savings amount"
+            name="dailyAmount"
+            value={
+              fund?.dailyAmount
+                ? amountText(fund.dailyAmount)
+                : book.preferences.savingsAmount
+                  ? amountText(book.preferences.savingsAmount)
+                  : undefined
+            }
+          />
+        )}
         <p className="field-help">
-          {fund
-            ? "To correct a starting balance, edit its entry in History."
-            : "Already saved money becomes a starting balance. It won’t reduce your allowance."}
+          {mode === "fixed"
+            ? "One amount for each checked school day. Changes apply to unchecked savings."
+            : "Add savings whenever you choose. Earlier fixed-day checks remain available in fund details."}
         </p>
+        <details
+          className="additional-details"
+          open={fund?.goal ? true : undefined}
+        >
+          <summary>Additional details</summary>
+          <div>
+            <label>
+              Goal amount <span className="optional">optional</span>
+              <span className="money-input">
+                <span>₱</span>
+                <input
+                  name="goal"
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  max="1000000000"
+                  step="0.01"
+                  placeholder="e.g. 1000"
+                  defaultValue={fund?.goal ? amountText(fund.goal) : ""}
+                />
+              </span>
+            </label>
+            {!fund && (
+              <AmountField label="Already saved" value="0.00" allowZero />
+            )}
+            <p className="field-help">
+              {fund
+                ? "To correct a starting balance, edit its entry in History."
+                : "Already saved money becomes a starting balance. It won’t reduce your allowance."}
+            </p>
+          </div>
+        </details>
       </Form>
     </Modal>
   );
@@ -493,16 +958,103 @@ function EntryList({
   book,
   edit,
   remove,
+  clearFilters,
+  grouped = false,
+  preview = false,
+  history = false,
+  oldestFirst = false,
 }: {
+  history?: boolean;
+  oldestFirst?: boolean;
+  grouped?: boolean;
+  preview?: boolean;
   entries: Entry[];
   book: Notebook;
   edit(entry: Entry): void;
   remove(entry: Entry): void;
+  clearFilters?: () => void;
 }) {
+  if (!grouped && entries.length) {
+    const openings = entries.filter((e) => e.kind.startsWith("opening_"));
+    const ordinary = entries.filter((e) => !e.kind.startsWith("opening_"));
+    const dates = [...new Set(ordinary.map((e) => e.date))].sort();
+    if (!oldestFirst) dates.reverse();
+    return (
+      <div className="dated-entries">
+        {dates.map((date) => (
+          <section key={date} className="entry-date-group">
+            <h3 className={history ? "history-date-heading" : undefined}>
+              <span>
+                {history && <CalendarDays size={16} aria-hidden="true" />}
+                <time dateTime={date}>
+                  {history
+                    ? new Date(`${date}T12:00:00`).toLocaleDateString("en-PH", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : displayDate(date)}
+                </time>
+              </span>
+            </h3>
+            <EntryList
+              grouped
+              history={history}
+              entries={ordinary.filter((e) => e.date === date)}
+              book={book}
+              edit={edit}
+              remove={remove}
+            />
+          </section>
+        ))}
+        {!ordinary.length && (
+          <p className="field-help">
+            No transactions yet. <a href="#allowance">Add allowance</a> or{" "}
+            <a href="#expenses">record an expense</a> to get started.
+          </p>
+        )}
+        {openings.length > 0 && (
+          <section className="entry-date-group starting-balances">
+            <h3>Starting balances</h3>
+            <EntryList
+              grouped
+              history={history}
+              entries={openings}
+              book={book}
+              edit={edit}
+              remove={remove}
+            />
+          </section>
+        )}
+      </div>
+    );
+  }
   if (!entries.length)
     return (
-      <Empty title="A fresh page">
-        Your money notes will appear here as you add them.
+      <Empty
+        title={
+          clearFilters
+            ? "No matching entries"
+            : history
+              ? "No transactions yet"
+              : "A fresh page"
+        }
+        action={
+          clearFilters ? (
+            <button className="button secondary" onClick={clearFilters}>
+              Clear filters
+            </button>
+          ) : (
+            <a className="button secondary" href="#allowance">
+              Go to daily check-in
+            </a>
+          )
+        }
+      >
+        {clearFilters
+          ? "Try a different date or clear your filters to see all records."
+          : "Add allowance in Allowance or record spending in Expenses to fill this page."}
       </Empty>
     );
   return (
@@ -516,8 +1068,54 @@ function EntryList({
           "opening_savings",
           "return",
         ].includes(entry.kind);
-        const Icon =
-          entry.kind === "deposit" || entry.kind === "opening_savings"
+        const withdrawal = entry.kind === "return" || entry.kind === "spend";
+        const displayIncoming = history && withdrawal ? false : incoming;
+        const badge = entry.kind.startsWith("opening_")
+          ? "Starting balance"
+          : entry.kind === "allowance"
+            ? "Allowance"
+            : entry.kind === "expense"
+              ? "Expense"
+              : entry.kind === "deposit"
+                ? "Savings"
+                : entry.kind === "return"
+                  ? "Withdrawal"
+                  : "Savings spent";
+        const context = !history
+          ? [
+              labels[entry.kind],
+              fund?.name,
+              entry.source
+                ? entry.source === "allowance"
+                  ? "Allowance"
+                  : "Extra money"
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : [
+              withdrawal ? labels[entry.kind] : null,
+              fund?.name,
+              entry.source
+                ? entry.source === "allowance"
+                  ? "Allowance"
+                  : "Extra money"
+                : null,
+              entry.allowanceDayNumber
+                ? `Day ${entry.allowanceDayNumber} · Allowance`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+        const Icon = history
+          ? withdrawal
+            ? ArrowDownToLine
+            : entry.kind === "allowance" || entry.kind === "opening_allowance"
+              ? Wallet
+              : entry.kind === "deposit" || entry.kind === "opening_savings"
+                ? Sprout
+                : ArrowUpRight
+          : entry.kind === "deposit" || entry.kind === "opening_savings"
             ? Sprout
             : entry.kind === "return"
               ? ArrowLeftRight
@@ -525,40 +1123,67 @@ function EntryList({
                 ? ArrowDownLeft
                 : ArrowUpRight;
         return (
-          <div className="entry-row" key={entry.id}>
-            <span className={`entry-symbol ${incoming ? "green" : "peach"}`}>
+          <div
+            className={`entry-row${preview ? " recent-entry" : ""}${history ? ` history-entry entry-kind-${entry.kind}` : ""}`}
+            key={entry.id}
+          >
+            <span
+              className={`entry-symbol ${entry.kind === "deposit" || entry.kind === "opening_savings" ? "savings-symbol" : incoming ? "green" : "peach"}`}
+            >
               <Icon size={19} />
             </span>
             <div className="entry-description">
               <strong>{entry.note || labels[entry.kind]}</strong>
-              <span>
-                {labels[entry.kind]}
-                {fund ? ` · ${fund.name}` : ""}
-                {entry.source
-                  ? ` · ${entry.source === "allowance" ? "Allowance" : "Extra money"}`
-                  : ""}
-              </span>
+              {context && <span>{context}</span>}
               <time dateTime={entry.date}>{displayDate(entry.date)}</time>
             </div>
+            {history && (
+              <span className={`history-entry-kind kind-${entry.kind}`}>
+                {badge}
+              </span>
+            )}
             <div className="entry-end">
-              <strong className={incoming ? "positive" : ""}>
-                {incoming ? "+" : "−"}
+              <strong className={displayIncoming ? "positive" : ""}>
+                {entry.kind.startsWith("opening_")
+                  ? ""
+                  : displayIncoming
+                    ? "+"
+                    : "−"}
                 {money(entry.amount)}
               </strong>
-              <div className="entry-actions">
+              {preview && (
+                <time className="entry-preview-date" dateTime={entry.date}>
+                  {new Date(`${entry.date}T12:00:00`).toLocaleDateString(
+                    "en-PH",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      ...(entry.date.slice(0, 4) !== localDate().slice(0, 4)
+                        ? { year: "numeric" }
+                        : {}),
+                    },
+                  )}
+                </time>
+              )}
+              <ActionMenu
+                label={`Actions for ${entry.note || labels[entry.kind]} on ${displayDate(entry.date)}`}
+                className="entry-actions"
+                floating={history}
+              >
                 <button
                   onClick={() => edit(entry)}
                   aria-label={`Edit ${entry.note || labels[entry.kind]}`}
                 >
-                  Edit
+                  {history && <Pencil size={16} aria-hidden="true" />}Edit
                 </button>
                 <button
+                  className="danger"
                   onClick={() => remove(entry)}
                   aria-label={`Delete ${entry.note || labels[entry.kind]}`}
                 >
-                  Delete
+                  {history && <Trash2 size={16} aria-hidden="true" />}Delete
                 </button>
-              </div>
+              </ActionMenu>
             </div>
           </div>
         );
@@ -874,20 +1499,106 @@ export default function App() {
   }, [ready, openError]);
   const [page, setPage] = useState<Page>(pageFromHash);
   const [modal, setModal] = useState<ModalState>(null);
+  const [allowanceConfirmation, setAllowanceConfirmation] =
+    useState<PendingAllowanceConfirmation | null>(null);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>();
+  const [expenseSelection, setExpenseSelection] = useState<{
+    periodId: string;
+    dayNumber: number;
+  }>();
+  const [today, setToday] = useState(localDate);
+  const [railTooltip, setRailTooltip] = useState<{
+    label: string;
+    top: number;
+  }>();
+  const tooltipTimer = useRef<number | undefined>(undefined);
+  function confirmAllowance(message: string) {
+    return new Promise<boolean>((resolve) =>
+      setAllowanceConfirmation({ message, resolve }),
+    );
+  }
+  function resolveAllowanceConfirmation(confirmed: boolean) {
+    allowanceConfirmation?.resolve(confirmed);
+    setAllowanceConfirmation(null);
+  }
+  function hideRailTooltip() {
+    window.clearTimeout(tooltipTimer.current);
+    tooltipTimer.current = window.setTimeout(
+      () => setRailTooltip(undefined),
+      200,
+    );
+  }
+  function showRailTooltip(target: HTMLElement, label: string) {
+    window.clearTimeout(tooltipTimer.current);
+    if (!sidebarCollapsed || window.innerWidth <= 760) return;
+    const rect = target.getBoundingClientRect();
+    setRailTooltip({ label, top: rect.top + rect.height / 2 });
+  }
+  useEffect(() => {
+    const hide = () => {
+      window.clearTimeout(tooltipTimer.current);
+      setRailTooltip(undefined);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") hide();
+    };
+    window.addEventListener("resize", hide);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("resize", hide);
+      window.removeEventListener("keydown", escape);
+      window.clearTimeout(tooltipTimer.current);
+    };
+  }, []);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("pomi-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("pomi-sidebar-collapsed", String(sidebarCollapsed));
+    } catch {
+      /* Keep the current view when storage is unavailable. */
+    }
+  }, [sidebarCollapsed]);
+  useEffect(() => {
+    const timer = setInterval(() => setToday(localDate()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  function selectPeriod(id: string) {
+    setSelectedPeriodId(id);
+    setExpenseSelection(undefined);
+    setExpenseDetailsOpen(true);
+  }
+
+  const [focusDay, setFocusDay] = useState<{
+    periodId: string;
+    dayNumber: number;
+  } | null>(null);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [fundViewSelection, setFundViewSelection] = useState<{
+    fundId: string;
+    hasChecklist: boolean;
+    view: "checklist" | "details";
+  }>();
+  const [expenseDetailsOpen, setExpenseDetailsOpen] = useState(true);
+  const [selectedFundId, setSelectedFundId] = useState<string>();
   const [fundFilter, setFundFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [online, setOnline] = useState(navigator.onLine);
+  const [historyOrder, setHistoryOrder] = useState("newest");
   const [install, setInstall] = useState<InstallEvent | null>(null);
   const [installed, setInstalled] = useState(
     matchMedia("(display-mode: standalone)").matches,
   );
   const {
-    offlineReady: [offlineReady],
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
@@ -902,7 +1613,6 @@ export default function App() {
       setModal(null);
       setError("");
     };
-    const network = () => setOnline(navigator.onLine);
     const prompt = (event: Event) => {
       event.preventDefault();
       setInstall(event as InstallEvent);
@@ -912,23 +1622,53 @@ export default function App() {
       setInstall(null);
     };
     window.addEventListener("hashchange", hash);
-    window.addEventListener("online", network);
-    window.addEventListener("offline", network);
     window.addEventListener("beforeinstallprompt", prompt);
     window.addEventListener("appinstalled", didInstall);
     return () => {
       window.removeEventListener("hashchange", hash);
-      window.removeEventListener("online", network);
-      window.removeEventListener("offline", network);
       window.removeEventListener("beforeinstallprompt", prompt);
       window.removeEventListener("appinstalled", didInstall);
     };
   }, []);
+  // Success notices have no required action; errors remain until resolved.
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(""), 4500);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      if (!document.activeElement?.closest(".save-message")) setToast("");
+    }, 5000);
+    return () => window.clearTimeout(timer);
   }, [toast]);
+  useEffect(() => {
+    const funds =
+      loaded?.book?.funds.filter((fund) => showArchived || !fund.archived) ??
+      [];
+    setSelectedFundId((current) =>
+      funds.some((fund) => fund.id === current) ? current : funds[0]?.id,
+    );
+  }, [loaded?.book?.funds, showArchived]);
+  const previousPage = useRef(page);
+  useEffect(() => {
+    if (!loaded?.book) return;
+    const changed = previousPage.current !== page;
+    previousPage.current = page;
+    document.title = `${pages.find((p) => p.id === page)?.label ?? "Home"} · Pomi`;
+    if (!changed && !focusDay) return;
+    if (focusDay && page !== "allowance") return;
+    const frame = requestAnimationFrame(() => {
+      const target =
+        focusDay && page === "allowance"
+          ? document.getElementById(
+              `checkin-day-${focusDay.periodId}-${focusDay.dayNumber}`,
+            )
+          : document.querySelector<HTMLElement>("#main-content h1");
+      target?.focus({ preventScroll: true });
+      if (focusDay) {
+        target?.scrollIntoView({ block: "center" });
+        setFocusDay(null);
+      } else window.scrollTo({ top: 0, behavior: "instant" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [page, !!loaded?.book, focusDay]);
   if (!loaded)
     return (
       <main className="loading">
@@ -939,7 +1679,7 @@ export default function App() {
   if (!loaded.book)
     return (
       <main className="loading">
-        <h1>Your notebook couldn’t open</h1>
+        <h1 tabIndex={-1}>Your notebook couldn’t open</h1>
         <p role="alert">{loaded.error}</p>
         <p>
           Try reloading or allowing this site to store data. Your records have
@@ -952,15 +1692,158 @@ export default function App() {
     );
   const book = loaded.book;
   const balances = totals(book);
+  const selectedPeriod =
+    book.periods.find((period) => period.id === selectedPeriodId) ??
+    book.periods.at(-1);
+  const selectedDayNumber = selectedPeriod
+    ? expenseSelection?.periodId === selectedPeriod.id &&
+      selectedPeriod.days[expenseSelection.dayNumber - 1]
+      ? expenseSelection.dayNumber
+      : Math.max(
+          1,
+          selectedPeriod.days.findIndex(
+            (day) => day.date === today && !day.noClass,
+          ) + 1 || selectedPeriod.days.findIndex((day) => !day.noClass) + 1,
+        )
+    : undefined;
+  const selectedDay =
+    selectedPeriod && selectedDayNumber
+      ? selectedPeriod.days[selectedDayNumber - 1]
+      : undefined;
+  const selectedDailyBalance =
+    selectedPeriod && selectedDayNumber
+      ? dailyBalance(book, selectedPeriod, selectedDayNumber)
+      : undefined;
+  function openDay(periodId: string, dayNumber: number) {
+    selectPeriod(periodId);
+    setFocusDay({ periodId, dayNumber });
+    location.hash = "allowance";
+  }
+  function recordDayExpense(periodId: string, dayNumber: number) {
+    setModal({
+      type: "entry",
+      kind: "expense",
+      allowancePeriodId: periodId,
+      allowanceDayNumber: dayNumber,
+    });
+  }
   const sorted = [...book.entries].sort(
     (a, b) =>
       b.date.localeCompare(a.date) ||
       b.createdAt.localeCompare(a.createdAt) ||
       b.id.localeCompare(a.id),
   );
+  const recentEntries = sorted
+    .filter((e) => !(e.kind.startsWith("opening_") && e.amount === 0))
+    .slice(0, 3);
+  const visibleFunds = book.funds.filter(
+    (fund) => showArchived || !fund.archived,
+  );
+  const selectedFund =
+    visibleFunds.find((fund) => fund.id === selectedFundId) ?? visibleFunds[0];
+  const fundHasChecklist = (fund: Fund) =>
+    fund.savingMode === "fixed" ||
+    book.entries.some((entry) => entry.fundId === fund.id && !!entry.dayNumber);
+  const selectedFundHasChecklist =
+    !!selectedFund && fundHasChecklist(selectedFund);
+  const fundView =
+    fundViewSelection?.fundId === selectedFund?.id &&
+    fundViewSelection?.hasChecklist === selectedFundHasChecklist
+      ? fundViewSelection.view
+      : selectedFundHasChecklist
+        ? "checklist"
+        : "details";
+  function setFundView(view: "checklist" | "details") {
+    if (selectedFund)
+      setFundViewSelection({
+        fundId: selectedFund.id,
+        hasChecklist: selectedFundHasChecklist,
+        view,
+      });
+  }
+  const expenseEntries = sorted.filter((entry) => entry.kind === "expense");
+  const selectedDayExpenses =
+    selectedPeriod && selectedDayNumber
+      ? expenseEntries.filter(
+          (entry) =>
+            (entry.allowancePeriodId === selectedPeriod.id &&
+              entry.allowanceDayNumber === selectedDayNumber) ||
+            (entry.periodId === selectedPeriod.id &&
+              entry.dayNumber === selectedDayNumber),
+        )
+      : [];
+  const historyFiltered = sorted.filter(
+    (entry) =>
+      (!fundFilter ||
+        (fundFilter === "allowance"
+          ? !entry.fundId ||
+            entry.kind === "return" ||
+            entry.source === "allowance"
+          : entry.fundId === fundFilter)) &&
+      (!typeFilter || entry.kind === typeFilter) &&
+      (!from || entry.date >= from) &&
+      (!to || entry.date <= to),
+  );
+  const historyEntries =
+    historyOrder === "oldest"
+      ? [...historyFiltered].reverse()
+      : historyFiltered;
+  const historyTransactions = historyEntries.filter(
+    (entry) => !entry.kind.startsWith("opening_"),
+  );
+  const hasHistoryFilters = !!(fundFilter || typeFilter || from || to);
+  const historySummary = historyTransactions.reduce(
+    (summary, entry) => {
+      if (entry.kind === "allowance") summary.received += entry.amount;
+      if (entry.kind === "expense") summary.expenses += entry.amount;
+      if (entry.kind === "deposit") summary.deposits += entry.amount;
+      if (entry.kind === "return" || entry.kind === "spend")
+        summary.withdrawals += entry.amount;
+      return summary;
+    },
+    { received: 0, expenses: 0, deposits: 0, withdrawals: 0 },
+  );
+  const invalidHistoryRange = !!(from && to && from > to);
+  function clearHistoryFilters() {
+    setFundFilter("");
+    setTypeFilter("");
+    setFrom("");
+    setTo("");
+    document.getElementById("select-6")?.focus();
+  }
+  const totalSpent = expenseEntries.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  );
+  const homePeriod =
+    [...book.periods]
+      .reverse()
+      .find((period) => period.days.some((day) => day.date === today)) ??
+    selectedPeriod;
+  const homeDayIndex =
+    homePeriod?.days.findIndex((day) => day.date === today) ?? -1;
+  const homeDay = homePeriod?.days[homeDayIndex];
   const activeFunds = book.funds.filter((f) => !f.archived);
-  const editEntry = (entry: Entry) =>
-    setModal({ type: "entry", kind: entry.kind, entry });
+  const goalFunds = activeFunds.filter((fund) => fund.goal);
+  const savingsGoal = goalFunds.reduce((sum, fund) => sum + fund.goal!, 0);
+  const savingsGoalBalance = goalFunds.reduce(
+    (sum, fund) => sum + Math.min(balances.funds[fund.id], fund.goal!),
+    0,
+  );
+
+  function editEntry(entry: Entry) {
+    if (entry.periodId && entry.dayNumber) {
+      selectPeriod(entry.periodId);
+      setFocusDay({ periodId: entry.periodId, dayNumber: entry.dayNumber });
+      if (location.hash !== "#allowance") location.hash = "allowance";
+      else setPage("allowance");
+    } else
+      setModal(
+        entry.periodId
+          ? { type: "period", periodId: entry.periodId }
+          : { type: "entry", kind: entry.kind, entry },
+      );
+  }
   async function removeEntry(entry: Entry) {
     if (
       !confirm(
@@ -969,8 +1852,36 @@ export default function App() {
     )
       return;
     try {
-      if (await commit((current) => withoutEntry(current, entry.id)))
+      if (
+        await commit(
+          (current) =>
+            entry.periodId
+              ? entry.dayNumber === undefined
+                ? removePeriod(current, entry.periodId)
+                : entry.kind === "deposit"
+                  ? setSavingsDay(
+                      current,
+                      entry.periodId,
+                      entry.dayNumber,
+                      entry.fundId!,
+                      false,
+                    )
+                  : setAllowanceDay(
+                      current,
+                      entry.periodId,
+                      entry.dayNumber,
+                      false,
+                    )
+              : withoutEntry(current, entry.id),
+          confirmAllowance,
+        )
+      ) {
         setToast("Entry deleted. Balances updated.");
+        if (page === "history")
+          requestAnimationFrame(() =>
+            document.getElementById("history-transactions-title")?.focus(),
+          );
+      }
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -999,7 +1910,11 @@ export default function App() {
   ) => (
     <button
       className={className}
-      onClick={() => setModal({ type: "entry", kind })}
+      onClick={() =>
+        setModal(
+          kind === "allowance" ? { type: "period" } : { type: "entry", kind },
+        )
+      }
     >
       <Plus size={17} />
       {label}
@@ -1036,68 +1951,121 @@ export default function App() {
     .filter((e) => e.kind === "deposit")
     .reduce((sum, e) => sum + e.amount, 0);
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <aside className="sidebar">
         <a className="brand" href="#home" aria-label="Pomi home">
           <span className="brand-mark">
-            <Sprout size={26} />
+            <Sticker kind="bow" />
           </span>
-          pomi<span className="brand-dot">.</span>
+          <span className="brand-name">
+            pomi<span className="brand-dot">.</span>
+          </span>
         </a>
-        <p className="brand-caption">MY MONEY NOTEBOOK</p>
-        <nav aria-label="Main navigation">
-          {pages.map(({ id, label, icon: Icon }) => (
-            <a
-              href={`#${id}`}
-              key={id}
-              className={page === id ? "nav-item active" : "nav-item"}
-              aria-current={page === id ? "page" : undefined}
-            >
-              <Icon size={20} />
-              <span>{label}</span>
-              {page === id && <span className="nav-dot" />}
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-note">
-          <Leaf size={24} />
-          <p>
-            Little by little
-            <br />
-            adds up to a lot.
-          </p>
-          <span>Make room for what matters.</span>
+        <p className="brand-caption">Allowance & savings</p>
+        <div className="sidebar-body">
+          <nav id="sidebar-navigation" aria-label="Main navigation">
+            {pages.map(({ id, label, icon: Icon }) => (
+              <a
+                href={`#${id}`}
+                key={id}
+                className={`nav-item${page === id ? " active" : ""}${id === "settings" ? " desktop-settings" : ""}`}
+                aria-current={page === id ? "page" : undefined}
+                onMouseEnter={(event) =>
+                  showRailTooltip(event.currentTarget, label)
+                }
+                onMouseLeave={hideRailTooltip}
+                onFocus={(event) => showRailTooltip(event.currentTarget, label)}
+                onBlur={() => setRailTooltip(undefined)}
+                aria-describedby={
+                  railTooltip?.label === label ? "rail-tooltip" : undefined
+                }
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+                {page === id && <span className="nav-dot" />}
+              </a>
+            ))}
+          </nav>
         </div>
-        <div className="storage-note">
-          <span className="status-dot" />
-          Saved on this device
+        <div className="sidebar-controls">
+          <button
+            type="button"
+            className="icon-button sidebar-toggle"
+            onClick={() => {
+              setSidebarCollapsed((collapsed) => !collapsed);
+              setRailTooltip(undefined);
+            }}
+            aria-label={
+              sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="sidebar-navigation"
+            onMouseEnter={(event) =>
+              showRailTooltip(event.currentTarget, "Expand sidebar")
+            }
+            onMouseLeave={hideRailTooltip}
+            onFocus={(event) =>
+              showRailTooltip(event.currentTarget, "Expand sidebar")
+            }
+            onBlur={() => setRailTooltip(undefined)}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={20} aria-hidden="true" />
+            ) : (
+              <PanelLeftClose size={20} aria-hidden="true" />
+            )}
+          </button>
         </div>
       </aside>
+      {railTooltip && sidebarCollapsed && (
+        <div
+          id="rail-tooltip"
+          className="rail-tooltip"
+          role="tooltip"
+          style={{ top: railTooltip.top }}
+          onMouseEnter={() => window.clearTimeout(tooltipTimer.current)}
+          onMouseLeave={hideRailTooltip}
+        >
+          {railTooltip.label}
+        </div>
+      )}
       <div className="workspace">
-        <header className="topbar">
-          <span>
-            <NotebookPen size={16} />A little more mindful, every day.
-          </span>
-          <div>
-            <span className="connection">
-              {!online ? (
-                <>
-                  <WifiOff size={15} />
-                  Offline
-                </>
-              ) : (
-                <>
-                  <span className="status-dot" />
-                  {offlineReady ? "Ready for offline" : "My personal notebook"}
-                </>
-              )}
-            </span>
-            <span className="avatar" aria-label="My notebook">
-              P
-            </span>
+        <main className="main-content" id="main-content" tabIndex={-1}>
+          <div className="mobile-toolbar">
+            <a
+              className="button secondary"
+              href="#settings"
+              aria-current={page === "settings" ? "page" : undefined}
+            >
+              <Settings size={18} aria-hidden="true" />
+              Settings
+            </a>
           </div>
-        </header>
-        <main className="main-content" id="main-content">
+          <div className="save-message" role="status">
+            <span>{toast}</span>
+            {toast && (
+              <>
+                <Check size={16} aria-hidden="true" />
+                <button
+                  className="icon-button"
+                  onClick={() => setToast("")}
+                  aria-label="Dismiss notification"
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </>
+            )}
+          </div>
           {needRefresh && (
             <div className="notice">
               <span>
@@ -1121,6 +2089,7 @@ export default function App() {
               </button>
             </div>
           )}
+          <SavingsReminder book={book} period={selectedPeriod} />
           {page === "home" && (
             <>
               <header className="page-heading home-heading">
@@ -1256,6 +2225,131 @@ export default function App() {
                 <Leaf size={14} />
                 Progress doesn’t have to be big to count.
               </p>
+            </>
+          )}
+          {page === "allowance" && (
+            <>
+              <header className="page-heading action-heading">
+                <div>
+                  <h1 tabIndex={-1}>
+                    My allowance<span>.</span>
+                  </h1>
+                  <p>Your allowance and savings, one day at a time.</p>
+                </div>
+              </header>
+              <div
+                className="allowance-summary allowance-page-summary summary-group summary-group-three"
+                aria-label="Notebook balances"
+              >
+                <div className="financial-summary summary-allowance">
+                  <span className="summary-label">Available allowance</span>
+                  <strong
+                    className="summary-amount"
+                    data-testid="allowance-balance"
+                  >
+                    {money(balances.allowance)}
+                  </strong>
+                  {!book.periods.length && (
+                    <div className="summary-actions">
+                      {entryButton("allowance", "Add allowance")}
+                    </div>
+                  )}
+                </div>
+                <div className="allowance-saved financial-summary summary-savings">
+                  <span className="summary-label">Total savings</span>
+                  <strong
+                    className="summary-amount"
+                    data-testid="savings-balance"
+                  >
+                    {money(balances.savings)}
+                  </strong>
+                </div>
+                <div className="allowance-spent financial-summary summary-spending">
+                  <span className="summary-label">Total spent</span>
+                  <strong className="summary-amount">
+                    {money(totalSpent)}
+                  </strong>
+                </div>
+              </div>
+              {book.periods.length > 0 && (
+                <div className="period-toolbar">
+                  <PeriodSelector
+                    book={book}
+                    periodId={selectedPeriod?.id}
+                    select={selectPeriod}
+                  />
+                  {selectedPeriod && (
+                    <button
+                      className="button secondary"
+                      onClick={() =>
+                        setModal({
+                          type: "period",
+                          periodId: selectedPeriod.id,
+                        })
+                      }
+                    >
+                      Edit period
+                    </button>
+                  )}
+                </div>
+              )}
+              <section
+                className="panel section-block checkin-section"
+                aria-label="Daily check-in"
+              >
+                {!book.periods.length ? (
+                  <div className="welcome-guide">
+                    <Sticker kind="heart" />
+                    <h3>Start a new page</h3>
+                    <p>
+                      Give your allowance a plan. Your daily checklist will
+                      appear here.
+                    </p>
+                    <ol>
+                      <li>
+                        <strong>Add your allowance</strong>
+                        <span>
+                          Enter the total, daily amount, and number of days.
+                        </span>
+                      </li>
+                      <li>
+                        <strong>Start a day</strong>
+                        <span>
+                          Set aside its daily budget, then record what you
+                          spend.
+                        </span>
+                      </li>
+                      <li>
+                        <strong>Mark what you saved</strong>
+                        <span>
+                          Record spending and savings against that day’s budget.
+                        </span>
+                      </li>
+                    </ol>
+                  </div>
+                ) : (
+                  <>
+                    <div className="allowance-list-heading">
+                      <div>
+                        <h2>Daily allowance</h2>
+                      </div>
+                      {entryButton("allowance", "Add allowance")}
+                    </div>
+                    {selectedPeriod && (
+                      <article
+                        className="allowance-period"
+                        key={selectedPeriod.id}
+                      >
+                        <DailyCheckIn
+                          book={book}
+                          period={selectedPeriod}
+                          confirmAllowance={confirmAllowance}
+                        />
+                      </article>
+                    )}
+                  </>
+                )}
+              </section>
             </>
           )}
           {page === "savings" && (
@@ -1396,16 +2490,22 @@ export default function App() {
               installed={installed}
             />
           )}
-          <footer className="page-footer">
-            <span>
-              pomi. <span>A little notebook for your money.</span>
-            </span>
-            <span>
-              Made for your own pace <Leaf size={13} />
-            </span>
-          </footer>
         </main>
       </div>
+      {modal?.type === "period" && (
+        <PeriodEditor
+          key={modal.periodId ?? "new"}
+          book={book}
+          periodId={modal.periodId}
+          close={() => setModal(null)}
+          saved={setToast}
+          confirmAllowance={confirmAllowance}
+          selected={(id) => {
+            selectPeriod(id);
+            if (!modal.periodId && page === "home") location.hash = "allowance";
+          }}
+        />
+      )}
       {modal?.type === "entry" && (
         <EntryEditor
           key={modal.entry?.id ?? `${modal.kind}-${modal.fundId ?? ""}`}
@@ -1413,26 +2513,83 @@ export default function App() {
           book={book}
           close={() => setModal(null)}
           saved={setToast}
+          confirmAllowance={confirmAllowance}
         />
       )}
       {modal?.type === "fund" && (
         <FundEditor
+          book={book}
           fund={modal.fund}
           close={() => setModal(null)}
           saved={setToast}
         />
       )}
-      {toast && (
-        <div className="toast" role="status">
-          <Check size={18} />
-          {toast}
-          <button
-            onClick={() => setToast("")}
-            aria-label="Dismiss notification"
-          >
-            <X size={16} />
-          </button>
-        </div>
+      {allowanceConfirmation && (
+        <Modal
+          title="Record over budget?"
+          close={() => resolveAllowanceConfirmation(false)}
+        >
+          <p className="modal-copy">{allowanceConfirmation.message}</p>
+          <div className="dialog-actions">
+            <button
+              className="button secondary"
+              onClick={() => resolveAllowanceConfirmation(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="button primary"
+              onClick={() => resolveAllowanceConfirmation(true)}
+            >
+              Record anyway
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function SchedulePreview({ period }: { period?: AllowancePeriod }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState("");
+  useEffect(() => {
+    const form = ref.current?.closest("form");
+    if (!form) return;
+    const update = () => {
+      try {
+        const data = new FormData(form);
+        const dates = schoolDates(
+          text(data, "startDate"),
+          data.getAll("schoolDays").map(Number),
+          Number(text(data, "dayCount")),
+        );
+        setPreview(
+          `${displayDate(dates[0])} – ${displayDate(dates.at(-1)!)} · ${dates.length} school days`,
+        );
+      } catch {
+        setPreview(
+          "Choose a start date, at least one school weekday, and a number of days.",
+        );
+      }
+    };
+    update();
+    form.addEventListener("input", update);
+    form.addEventListener("change", update);
+    return () => {
+      form.removeEventListener("input", update);
+      form.removeEventListener("change", update);
+    };
+  }, []);
+  return (
+    <div ref={ref} className="schedule-preview" role="status">
+      <strong>School schedule</strong>
+      <p>{preview}</p>
+      {period && (
+        <p className="field-help">
+          Saving confirms these dates. Existing transaction dates and checked
+          amounts stay unchanged.
+        </p>
       )}
     </div>
   );
