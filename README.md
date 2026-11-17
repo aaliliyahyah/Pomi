@@ -38,28 +38,34 @@ My browser tests use Chromium from `/usr/bin/chromium` when available. Otherwise
 
 ## What I Want to Track
 
-- **Allowance:** I record the amount whenever I receive money.
-- **Expenses:** I record what I spend from my available allowance.
-- **Savings funds:** I keep separate balances for different purposes, with an optional goal for each fund.
-- **Starting balances:** I enter the allowance and savings I already have without counting them as new income.
-- **Entry details:** I record an amount and date, with an optional note.
+- **Allowance periods:** I enter the daily amount, total money received, and how many days it should last. Each receipt has a dated school-day checklist with daily budgets.
+- **Daily savings:** Fixed daily funds have school-day checklists. Flexible funds accept manual deposits whenever I choose.
+- **Money taken:** I record allowance expenses or savings withdrawals, including partial amounts, and edit mistakes in History.
+- **Existing money:** Starting balances and older records stay available without creating artificial checklist days.
 
 ## How I'll Use It
 
 ### Receiving and spending allowance
 
-I add allowance manually when I receive it. My unspent balance carries forward between weeks instead of resetting automatically.
+I add allowance in the Allowance tab or through the Home shortcut and enter its daily amount, total received, and number of days. The total can differ from the daily amount multiplied by days. Starting a day captures its daily budget without spending it. I record expenses against that day, and savings and actual expenses each reduce the available balance once. Before unchecking a day, I reassign/delete its expenses and reverse its savings. Historical checked days retain their previous accounting and are labeled accordingly.
 
-If an expense or savings deposit would make my allowance negative, I want a warning and the option to record it anyway so my notes can reflect what actually happened.
+I choose a separate school start date and weekdays for each period. No Class skips a dated day without deducting money or adding a replacement day. I reverse any recorded savings and allowance before skipping a day.
 
-### Adding savings
+Each allowance receipt starts a new period. Earlier periods and unused money remain available. I can edit a period, but completed days keep their original amounts; changing the daily amount affects unchecked days. I must uncheck completed days before removing them.
 
-I choose a fund and record how much I put aside. For each deposit, I choose its source:
+For example, ₱1,000 received with ₱200 per day and three days creates three daily budgets. Starting a day leaves the overall balance at ₱1,000. Recording ₱25 spent and ₱50 saved leaves ₱125 in that day’s budget and ₱925 available overall.
 
-- **Allowance:** I reduce my available allowance and increase the fund's balance.
-- **Extra money:** I increase the fund's balance without changing my allowance.
+I use Record expense from Home, Expenses, or a started Allowance day. I can assign an expense to a period and a started day, or leave it outside daily budgets. Expenses shows separate spent and remaining cards and a selected-day breakdown. Pomi asks before creating or worsening a negative daily or overall balance, and keeps my input if I cancel.
 
-I record deposits whenever I save. I don't need a school calendar, daily targets, or required deposits.
+### Saving each day
+
+I choose Fixed daily with an amount such as ₱50 or ₱100, or Flexible for manual deposits without daily requirements. Allowance groups each day’s allowance and savings checks together. Each fund’s checklist has the same days as the allowance period. I check the allowance day first, then mark savings when I actually put the money aside. The selected-fund panel in Savings holds the individual checklist. Its period selector shares the Allowance selection, keeping older periods accessible without showing every checklist at once.
+
+For new daily budgets, checking ₱50 saved from a ₱200 day leaves ₱150 before any actual expenses. Savings cannot exceed the day’s remaining allowance. Previously checked historical days retain their original spending/savings split and balances.
+
+Changing a fund's fixed amount affects unchecked savings days. Existing checked savings keep their recorded amounts. I can reverse a savings check unless that would leave the fund below zero after withdrawals.
+
+Add Savings, on the Savings page and each fund, records money outside the daily checklist. I can choose allowance or extra money as its source; allowance-funded extra deposits reduce available allowance separately.
 
 ### Taking money out of savings
 
@@ -67,9 +73,9 @@ When I withdraw from a fund, I choose whether to return the money to my availabl
 
 ### Managing funds and correcting entries
 
-I can create and rename funds, change their optional goals, and archive funds while keeping their records.
+I can create and rename funds, change their optional goals, and archive funds while keeping their records. A three-dot menu holds Edit, Withdraw, Archive/Restore, and Delete. I can permanently delete unused funds; funds with financial history must be archived instead.
 
-I can edit or delete incorrect entries, including starting balances. I confirm before deleting an entry, and my affected balances recalculate after a correction. I don't need a separate audit trail of previous versions.
+I can edit or delete incorrect entries, including starting balances. Checklist-generated daily entries open and focus their matching day in Allowance when edited; allowance receipts open their period settings; deleting them reverses their associated checkbox. A period receipt can only be deleted after its completed days and linked expenses are cleared. I confirm before deleting an entry, and my affected balances recalculate after a correction. I don't need a separate audit trail of previous versions.
 
 ### Understanding my balances
 
@@ -83,18 +89,27 @@ I want savings spent directly from a fund recorded once, without also reducing m
 
 ## My Screens
 
-| Screen   | What I want to do                                                                                      |
-| -------- | ------------------------------------------------------------------------------------------------------ |
-| Home     | See my available allowance, total savings, and recent entries; quickly record allowance or an expense. |
-| Savings  | View my funds, balances, and optional goal progress; record deposits and withdrawals.                  |
-| History  | Browse my entries by date and fund, then edit or delete mistakes.                                      |
-| Settings | Export or restore a backup and manage my app preferences.                                              |
+| Screen    | What I want to do                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| Home      | See my available allowance, total savings, and recent entries; quickly record allowance or an expense. |
+| Allowance | Manage allowance periods and check each day’s allowance and savings.                                   |
+| Savings   | View my funds, balances, and optional goal progress; record deposits and withdrawals.                  |
+| History   | Browse my entries by date and fund, then edit or delete mistakes.                                      |
+| Settings  | Export or restore a backup and manage my app preferences.                                              |
+
+## Interface design
+
+Pomi uses a cream, peach, and rose journal style with mint savings accents with small geometric bow, heart, sparkle, and tape stickers. Functional icons remain labeled and consistent. The visual tokens, navigation rules, and accessibility standards are documented in [DESIGN.md](DESIGN.md).
+
+I can collapse the desktop sidebar to an icon rail using its bottom toggle. Pomi remembers this view preference on this device; mobile navigation stays visible.
 
 ## Storage and Backup
 
 I store my records on my device and use Pomi offline after its initial loading. My entries remain available after closing or reloading the app.
 
-I export and restore backups manually from Settings. Before restoring, Pomi validates the backup and asks me to confirm replacing my current records.
+Settings lets me set default daily allowance and savings amounts, school weekdays, and optional in-app reminders. Defaults affect new forms only. Reminders need Pomi to be open and start disabled.
+
+I export and restore backups manually from Settings, which shows the most recent export date on this device. Before restoring, Pomi validates the backup and asks me to confirm replacing my current records.
 
 My records won't sync automatically between devices. Clearing browser data can erase them, so I'll use exported backups to keep a separate copy.
 
@@ -132,4 +147,4 @@ I keep the application in `src/`, with money rules in `src/model.ts` and databas
 
 ## Project Status
 
-I've implemented the first version of my notebook: manual allowance and expense entries, multiple savings funds, optional goals, starting balances, editable history, archiving, offline storage, and backup export and restore. I keep my data on this device and don't use accounts or automatic sync.
+My notebook includes allowance periods, daily allowance and fixed savings checklists, manual expenses and withdrawals, multiple savings funds, optional goals, starting balances, editable history, archiving, offline storage, and backup export and restore. Older notebooks and version 1–3 backups migrate to version 4 without changing their balances, transaction dates, or entries. Previously checked days keep historical accounting; unrecorded and new days use actual spending. New exports use version 4 and require a current Pomi build. Older period schedules are inferred from receipt dates using Monday–Friday and can be corrected in period settings. New checklist transactions use scheduled school dates. I keep my data on this device and don't use accounts or automatic sync.
