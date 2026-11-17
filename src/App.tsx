@@ -29,7 +29,6 @@ import {
   PanelLeftOpen,
   Settings,
   Sprout,
-  Ellipsis,
   Upload,
   Wallet,
   X,
@@ -1194,84 +1193,68 @@ function EntryList({
 function FundCard({
   fund,
   balance,
-  deposit,
   withdraw,
   edit,
   archive,
-  compact = false,
+  remove,
+  details,
+  deletable,
+  selected,
 }: {
   fund: Fund;
   balance: number;
-  deposit(): void;
   withdraw(): void;
   edit(): void;
   archive(): void;
-  compact?: boolean;
+  remove(): void;
+  details(): void;
+  deletable: boolean;
+  selected: boolean;
 }) {
-  const percent = fund.goal
-    ? Math.min(100, Math.round((balance / fund.goal) * 100))
-    : null;
   return (
     <article className={`fund-card ${fund.archived ? "archived" : ""}`}>
-      <div className="fund-top">
-        <span className="fund-symbol">
-          <Sprout size={20} />
-        </span>
-        {fund.archived && <span className="badge">Archived</span>}
-        {!compact && (
-          <button
-            className="icon-button"
-            onClick={edit}
-            aria-label={`Edit ${fund.name}`}
-          >
-            <Ellipsis size={21} />
-          </button>
+      <h3 className="fund-selection-heading" aria-label={fund.name}>
+        <button
+          className="fund-select"
+          aria-label={`View checklist for ${fund.name}`}
+          aria-pressed={selected}
+          aria-controls="fund-checklist-panel"
+          onClick={details}
+        >
+          <span className="fund-symbol">
+            <Sprout size={20} aria-hidden="true" />
+          </span>
+          <span className="fund-card-copy">
+            <span className="fund-card-name">{fund.name}</span>
+            {fund.archived && <span className="fund-archived">Archived</span>}
+          </span>
+          <span className="fund-card-figures">
+            <span className="fund-value">{money(balance)}</span>
+          </span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </h3>
+      {fund.goal && (
+        <GoalProgress balance={balance} goal={fund.goal} name={fund.name} />
+      )}
+      <ActionMenu label={`Actions for ${fund.name}`} className="fund-more">
+        <button onClick={edit}>Edit fund</button>
+        <button onClick={withdraw} disabled={balance === 0}>
+          Withdraw savings
+        </button>
+        <button onClick={archive}>
+          {fund.archived ? "Restore fund" : "Archive fund"}
+        </button>
+        <button className="danger" onClick={remove} disabled={!deletable}>
+          Delete fund
+        </button>
+        {!deletable && (
+          <p>
+            This fund has financial history. Archive it to keep your records
+            safe.
+          </p>
         )}
-      </div>
-      <h3>{fund.name}</h3>
-      <div className="fund-value">{money(balance)}</div>
-      {fund.goal ? (
-        <>
-          <div
-            className="progress"
-            role="progressbar"
-            aria-label={`${fund.name} goal progress`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent!}
-          >
-            <span style={{ width: `${percent}%` }} />
-          </div>
-          <div className="goal-caption">
-            <span>of {money(fund.goal)}</span>
-            <span>{percent}%</span>
-          </div>
-        </>
-      ) : (
-        <p className="no-goal">A little more, whenever you can.</p>
-      )}
-      {!compact && (
-        <>
-          <div className="fund-buttons">
-            {!fund.archived && (
-              <button className="button soft" onClick={deposit}>
-                <Plus size={15} />
-                Add savings
-              </button>
-            )}
-            <button
-              className="button quiet"
-              onClick={withdraw}
-              disabled={balance === 0}
-            >
-              Take out
-            </button>
-          </div>
-          <button className="archive-button" onClick={archive}>
-            {fund.archived ? "Restore fund" : "Archive fund"}
-          </button>
-        </>
-      )}
+      </ActionMenu>
     </article>
   );
 }
@@ -1920,15 +1903,29 @@ export default function App() {
       {label}
     </button>
   );
-  const renderFund = (fund: Fund, compact = false) => (
+  const renderFund = (fund: Fund) => (
     <FundCard
       key={fund.id}
       fund={fund}
       balance={balances.funds[fund.id]}
-      compact={compact}
-      deposit={() =>
-        setModal({ type: "entry", kind: "deposit", fundId: fund.id })
-      }
+      selected={selectedFund?.id === fund.id}
+      details={() => {
+        setSelectedFundId(fund.id);
+        setFundViewSelection(undefined);
+        requestAnimationFrame(() =>
+          document.getElementById("fund-checklist-heading")?.focus(),
+        );
+      }}
+      deletable={canDeleteFund(book, fund.id)}
+      remove={async () => {
+        if (!confirm(`Delete ${fund.name}? This cannot be undone.`)) return;
+        try {
+          await changeNotebook((current) => deleteFund(current, fund.id));
+          setToast("Fund deleted.");
+        } catch (e) {
+          setError(errorMessage(e));
+        }
+      }}
       withdraw={() =>
         setModal({ type: "entry", kind: "return", fundId: fund.id })
       }
@@ -2704,30 +2701,70 @@ export default function App() {
             </div>
           )}
           {page === "savings" && (
-            <>
-              <header className="page-heading action-heading">
+            <div className="savings-page">
+              <header className="page-heading action-heading savings-heading">
                 <div>
-                  <span className="eyebrow">ROOM FOR WHAT MATTERS</span>
-                  <h1>
-                    My savings funds<span>.</span>
+                  <h1 tabIndex={-1}>
+                    Savings funds<span>.</span>
                   </h1>
                   <p>Different dreams. A little money put aside for each.</p>
                 </div>
-                <button
-                  className="button primary"
-                  onClick={() => setModal({ type: "fund" })}
-                >
-                  <Plus size={18} />
-                  New fund
-                </button>
+                <div className="savings-heading-actions">
+                  <button
+                    className="button secondary"
+                    onClick={() => setModal({ type: "fund" })}
+                  >
+                    <Plus size={17} aria-hidden="true" />
+                    New fund
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={!activeFunds.length}
+                    onClick={() => setModal({ type: "entry", kind: "deposit" })}
+                  >
+                    <Plus size={17} aria-hidden="true" />
+                    Add Savings
+                  </button>
+                </div>
               </header>
-              <div className="savings-overview">
-                <span>Total tucked away</span>
-                <strong>{money(balances.savings)}</strong>
-                <p>Includes money in archived funds.</p>
+              <div className="savings-overview-grid">
+                <section
+                  className="savings-overview savings-total-card financial-summary summary-savings"
+                  aria-label="Total savings"
+                >
+                  <div className="savings-total summary-content">
+                    <span className="summary-label">Total savings</span>
+                    <strong className="summary-amount">
+                      {money(balances.savings)}
+                    </strong>
+                  </div>
+                </section>
+                {savingsGoal > 0 ? (
+                  <section
+                    className="savings-overview savings-overall-progress"
+                    aria-label="Overall goal progress"
+                  >
+                    <div>
+                      <h2>Overall goal progress</h2>
+                      <GoalProgress
+                        balance={savingsGoalBalance}
+                        goal={savingsGoal}
+                        name="Active funds overall"
+                      />
+                    </div>
+                    <Sticker kind="sparkle" />
+                  </section>
+                ) : (
+                  <section className="savings-overview savings-overall-progress savings-goal-hint">
+                    Add an optional goal in fund details to track your progress.
+                  </section>
+                )}
               </div>
-              <div className="section-title">
-                <h2>{showArchived ? "All my funds" : "My active funds"}</h2>
+              <div className="savings-list-heading">
+                <h2>
+                  {showArchived ? "All my funds" : "My active funds"}{" "}
+                  <span>({visibleFunds.length})</span>
+                </h2>
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
@@ -2737,17 +2774,181 @@ export default function App() {
                   Show archived
                 </label>
               </div>
-              <div className="fund-grid">
-                {book.funds
-                  .filter((f) => showArchived || !f.archived)
-                  .map((f) => renderFund(f))}
+              <div className="savings-workspace">
+                <section className="fund-browser" aria-label="Savings funds">
+                  <div className="fund-grid savings-funds">
+                    {visibleFunds.map((fund) => (
+                      <div
+                        key={fund.id}
+                        className={`fund-choice${selectedFund?.id === fund.id ? " selected-fund" : ""}`}
+                      >
+                        {renderFund(fund)}
+                      </div>
+                    ))}
+                  </div>
+                  {!visibleFunds.length && (
+                    <Empty title="Make room for a new goal">
+                      Create a fund using New fund above, or show archived funds
+                      to restore one.
+                    </Empty>
+                  )}
+                </section>
+                <section
+                  id="fund-checklist-panel"
+                  className="panel fund-checklist-panel"
+                  aria-label="Selected fund checklist"
+                >
+                  {selectedFund ? (
+                    <>
+                      <header className="selected-fund-heading">
+                        <span className="fund-symbol">
+                          <Sprout size={24} aria-hidden="true" />
+                        </span>
+                        <div>
+                          <h2 id="fund-checklist-heading" tabIndex={-1}>
+                            {selectedFund.name}
+                          </h2>
+                          <p>
+                            {selectedFund.archived ? "Archived · " : ""}
+                            {selectedFund.savingMode === "fixed"
+                              ? `Fixed daily savings${selectedFund.dailyAmount ? ` · ${money(selectedFund.dailyAmount)} per school day` : ""}`
+                              : "Flexible savings · Any amount"}
+                          </p>
+                        </div>
+                      </header>
+                      {selectedFund.goal && (
+                        <div className="selected-fund-goal">
+                          <h3>Goal progress</h3>
+                          <GoalProgress
+                            balance={balances.funds[selectedFund.id]}
+                            goal={selectedFund.goal}
+                            name={selectedFund.name}
+                          />
+                        </div>
+                      )}
+                      <div
+                        className="fund-detail-switch"
+                        role="group"
+                        aria-label="Fund view"
+                      >
+                        <button
+                          className="button secondary"
+                          aria-pressed={fundView === "checklist"}
+                          onClick={() => setFundView("checklist")}
+                        >
+                          Daily checklist
+                        </button>
+                        <button
+                          className="button secondary"
+                          aria-pressed={fundView === "details"}
+                          onClick={() => setFundView("details")}
+                        >
+                          Fund details
+                        </button>
+                      </div>
+                      {fundView === "checklist" ? (
+                        <>
+                          {selectedFundHasChecklist ? (
+                            <>
+                              <PeriodSelector
+                                book={book}
+                                periodId={selectedPeriod?.id}
+                                select={selectPeriod}
+                              />
+                              {selectedFund.savingMode === "flexible" && (
+                                <p className="field-help">
+                                  Earlier fixed-day savings are kept here. Add
+                                  any amount using Add Savings.
+                                </p>
+                              )}
+                              <SavingsChecklists
+                                book={book}
+                                fund={selectedFund}
+                                period={selectedPeriod}
+                                confirmAllowance={confirmAllowance}
+                                edit={() =>
+                                  setModal({ type: "fund", fund: selectedFund })
+                                }
+                              />
+                            </>
+                          ) : (
+                            <p className="flexible-fund-help">
+                              This is a flexible fund. Add savings whenever you
+                              choose.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="fund-details-content">
+                          <dl>
+                            <div>
+                              <dt>Balance</dt>
+                              <dd>{money(balances.funds[selectedFund.id])}</dd>
+                            </div>
+                            <div>
+                              <dt>Saving frequency</dt>
+                              <dd>
+                                {selectedFund.savingMode === "fixed"
+                                  ? "Fixed daily"
+                                  : "Flexible"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Goal</dt>
+                              <dd>
+                                {selectedFund.goal
+                                  ? money(selectedFund.goal)
+                                  : "No goal set"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Status</dt>
+                              <dd>
+                                {selectedFund.archived ? "Archived" : "Active"}
+                              </dd>
+                            </div>
+                          </dl>
+                          {!selectedFund.goal && (
+                            <p className="field-help">
+                              Set an optional goal in Edit fund → Additional
+                              details.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <footer className="selected-fund-actions">
+                        <button
+                          className="button secondary"
+                          disabled={selectedFund.archived}
+                          onClick={() =>
+                            setModal({
+                              type: "entry",
+                              kind: "deposit",
+                              fundId: selectedFund.id,
+                            })
+                          }
+                        >
+                          <Plus size={17} aria-hidden="true" />
+                          Add Savings
+                        </button>
+                        <button
+                          className="button secondary"
+                          onClick={() =>
+                            setModal({ type: "fund", fund: selectedFund })
+                          }
+                        >
+                          Edit fund
+                        </button>
+                      </footer>
+                    </>
+                  ) : (
+                    <Empty title="Your checklist will appear here">
+                      Create or restore a fund to start tracking savings.
+                    </Empty>
+                  )}
+                </section>
               </div>
-              {!book.funds.some((f) => showArchived || !f.archived) && (
-                <Empty title="Make room for a new goal">
-                  Create a fund or show your archived funds to restore one.
-                </Empty>
-              )}
-            </>
+            </div>
           )}
           {page === "history" && (
             <>
