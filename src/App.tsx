@@ -1269,25 +1269,35 @@ function SettingsPage({
   install: InstallEvent | null;
   installed: boolean;
 }) {
+  const [lastBackup, setLastBackup] = useState(() => {
+    try {
+      return localStorage.getItem("pomi-last-backup") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [pending, setPending] = useState<Notebook | null>(null);
-  const [error, setError] = useState("");
+  const [backupError, setBackupError] = useState("");
+  const [restoreError, setRestoreError] = useState("");
+  const [installError, setInstallError] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   async function restore() {
     if (!pending || busy) return;
     setBusy(true);
-    setError("");
+    setRestoreError("");
     try {
       await changeNotebook(() => pending, true);
       setPending(null);
       notify("Your backup has been restored.");
     } catch (e) {
-      setError(errorMessage(e));
+      setRestoreError(errorMessage(e));
     } finally {
       setBusy(false);
     }
   }
   function download() {
+    setBackupError("");
     const blob = new Blob([exportBackup(book)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1295,130 +1305,161 @@ function SettingsPage({
     a.download = `pomi-backup-${localDate()}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify("Backup exported. Keep it somewhere safe.");
+    const timestamp = new Date().toISOString();
+    try {
+      localStorage.setItem("pomi-last-backup", timestamp);
+      setLastBackup(timestamp);
+    } catch {
+      setBackupError(
+        "The download started, but its date could not be saved. Keep the backup file somewhere safe.",
+      );
+    }
+    notify("Backup download started. Keep the file somewhere safe.");
   }
   return (
     <>
       <header className="page-heading">
-        <span className="eyebrow">MAKE YOURSELF AT HOME</span>
-        <h1>
-          My notebook settings<span>.</span>
+        <h1 tabIndex={-1}>
+          Notebook settings<span>.</span>
         </h1>
         <p>A little housekeeping for your money notes.</p>
       </header>
-      <section className="panel settings-panel">
-        <div className="section-title">
-          <h2>A copy for safekeeping</h2>
-          <Download size={20} />
-        </div>
-        <p>
-          Your notes live on this device. Export a backup before clearing
-          browser data or moving to another device.
-        </p>
-        <div className="settings-actions">
-          <button className="button primary" onClick={download}>
-            <Download size={17} />
-            Export backup
-          </button>
-          <button
-            className="button secondary"
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-          >
-            <Upload size={17} />
-            Restore backup
-          </button>
-        </div>
-        <input
-          className="visually-hidden"
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          aria-label="Choose Pomi backup"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (!file) return;
-            setError("");
-            setPending(null);
-            try {
-              if (file.size > 20_000_000)
-                throw new Error("Choose a backup smaller than 20 MB.");
-              setPending(importBackup(await file.text()));
-            } catch (e) {
-              setError(errorMessage(e));
-            }
-          }}
-        />
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-      </section>
-      <section className="panel settings-panel">
-        <div className="section-title">
-          <h2>A home on your screen</h2>
-          <House size={20} />
-        </div>
-        <p>
-          {installed
-            ? "Pomi is running as an installed app."
-            : "Install Pomi for a space of its own. Your notebook works offline once the app is ready."}
-        </p>
-        {install && !installed ? (
-          <button
-            className="button secondary"
-            onClick={async () => {
-              try {
-                await install.prompt();
-                await install.userChoice;
-              } catch (e) {
-                setError(errorMessage(e));
-              }
-            }}
-          >
-            Install Pomi
-            <ArrowDownToLine size={17} />
-          </button>
-        ) : (
-          !installed && (
-            <p className="field-help">
-              On iPhone or iPad, open in Safari, choose Share, then Add to Home
-              Screen. In other supported browsers, look for Install app in the
-              browser menu. Production hosting needs HTTPS.
+      <div className="settings-grid">
+        <Preferences book={book} notify={notify} />
+        <div className="settings-secondary">
+          <section className="panel settings-panel">
+            <div className="section-title">
+              <h2>Backup and restore</h2>
+              <Download size={20} />
+            </div>
+            <p>
+              Clearing browser data may permanently delete your records. Export
+              a backup to keep a separate copy.
             </p>
-          )
-        )}
-      </section>
-      <section className="panel settings-panel">
-        <div className="section-title">
-          <h2>Small, simple, yours</h2>
-          <Leaf size={20} />
+            <p className="field-help">
+              Last backup exported:{" "}
+              {lastBackup
+                ? new Date(lastBackup).toLocaleString("en-PH")
+                : "No backup exported on this device"}
+            </p>
+            <div className="settings-actions">
+              <button className="button primary" onClick={download}>
+                <Download size={17} />
+                Export backup
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy}
+              >
+                <Upload size={17} />
+                Restore backup
+              </button>
+            </div>
+            <input
+              className="visually-hidden"
+              ref={fileRef}
+              tabIndex={-1}
+              type="file"
+              accept="application/json,.json"
+              aria-label="Choose Pomi backup"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setBackupError("");
+                setRestoreError("");
+                setPending(null);
+                try {
+                  if (file.size > 20_000_000)
+                    throw new Error("Choose a backup smaller than 20 MB.");
+                  setPending(importBackup(await file.text()));
+                } catch (e) {
+                  setBackupError(errorMessage(e));
+                }
+              }}
+            />
+            {backupError && (
+              <p role="alert" className="error">
+                {backupError}
+              </p>
+            )}
+          </section>
+          <section className="panel settings-panel">
+            <div className="section-title">
+              <h2>Install Pomi</h2>
+              <House size={20} />
+            </div>
+            <p>
+              {installed
+                ? "Pomi is running as an installed app."
+                : "Install Pomi for a space of its own. Your notebook works offline once the app is ready."}
+            </p>
+            {install && !installed ? (
+              <button
+                className="button secondary"
+                onClick={async () => {
+                  setInstallError("");
+                  try {
+                    await install.prompt();
+                    await install.userChoice;
+                  } catch (e) {
+                    setInstallError(errorMessage(e));
+                  }
+                }}
+              >
+                Install Pomi
+                <ArrowDownToLine size={17} />
+              </button>
+            ) : (
+              !installed && (
+                <p className="field-help">
+                  On iPhone or iPad, open in Safari, choose Share, then Add to
+                  Home Screen. In other supported browsers, look for Install app
+                  in the browser menu.
+                </p>
+              )
+            )}
+            {installError && (
+              <p role="alert" className="error">
+                {installError}
+              </p>
+            )}
+          </section>
+          <section className="panel settings-panel">
+            <div className="section-title">
+              <h2>About your notebook</h2>
+              <Leaf size={20} />
+            </div>
+            <dl className="preferences">
+              <div>
+                <dt>Currency</dt>
+                <dd>Philippine peso (PHP)</dd>
+              </div>
+              <div>
+                <dt>Allowance</dt>
+                <dd>Recorded manually · carries forward</dd>
+              </div>
+              <div>
+                <dt>Storage</dt>
+                <dd>On this device · no account or sync</dd>
+              </div>
+            </dl>
+            <p className="field-help">
+              I’m Pomi, your little allowance and savings notebook. Version
+              0.1.0.
+            </p>
+          </section>
         </div>
-        <dl className="preferences">
-          <div>
-            <dt>Currency</dt>
-            <dd>Philippine peso (PHP)</dd>
-          </div>
-          <div>
-            <dt>Allowance</dt>
-            <dd>Recorded manually · carries forward</dd>
-          </div>
-          <div>
-            <dt>Storage</dt>
-            <dd>On this device · no account or sync</dd>
-          </div>
-        </dl>
-        <p className="field-help">
-          I’m Pomi, your little allowance and savings notebook. Version 0.1.0.
-        </p>
-      </section>
+      </div>
       {pending && (
         <Modal
           title="Replace my notebook?"
           close={() => {
-            if (!busy) setPending(null);
+            if (!busy) {
+              setPending(null);
+              setRestoreError("");
+            }
           }}
         >
           <p className="modal-copy">
@@ -1431,11 +1472,19 @@ function SettingsPage({
             Restoring replaces every current fund and entry on this device.
             Export your current notebook first if you want to keep it.
           </p>
+          {restoreError && (
+            <p role="alert" className="error">
+              {restoreError}
+            </p>
+          )}
           <div className="settings-actions">
             <button
               className="button secondary"
               disabled={busy}
-              onClick={() => setPending(null)}
+              onClick={() => {
+                setPending(null);
+                setRestoreError("");
+              }}
             >
               Keep my notebook
             </button>
@@ -3187,6 +3236,104 @@ export default function App() {
         </Modal>
       )}
     </div>
+  );
+}
+
+function Preferences({
+  book,
+  notify,
+}: {
+  book: Notebook;
+  notify(message: string): void;
+}) {
+  return (
+    <section className="panel settings-panel preferences-panel">
+      <h2>Allowance &amp; Savings Preferences</h2>
+      <p className="field-help">
+        Defaults fill new plans and funds. Existing records stay as entered.
+      </p>
+      <Form
+        label="Save preferences"
+        submit={async (data) => {
+          if (!data.getAll("schoolDays").length)
+            throw new Error(
+              "Choose at least one school day, then save your preferences.",
+            );
+          const preferences = preferencesSchema.parse({
+            allowanceAmount: text(data, "allowanceAmount").trim()
+              ? parseAmount(text(data, "allowanceAmount"))
+              : null,
+            savingsAmount: text(data, "savingsAmount").trim()
+              ? parseAmount(text(data, "savingsAmount"))
+              : null,
+            schoolDays: data.getAll("schoolDays").map(Number),
+            reminderEnabled: data.has("reminderEnabled"),
+            reminderTime: text(data, "reminderTime"),
+          });
+          await changeNotebook((current) => ({ ...current, preferences }));
+          notify("Allowance and savings preferences saved.");
+        }}
+      >
+        <label>
+          Default daily allowance <span className="optional">optional</span>
+          <span className="money-input">
+            <span>₱</span>
+            <input
+              name="allowanceAmount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              defaultValue={
+                book.preferences.allowanceAmount
+                  ? amountText(book.preferences.allowanceAmount)
+                  : ""
+              }
+            />
+          </span>
+        </label>
+        <label>
+          Default daily savings <span className="optional">optional</span>
+          <span className="money-input">
+            <span>₱</span>
+            <input
+              name="savingsAmount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              defaultValue={
+                book.preferences.savingsAmount
+                  ? amountText(book.preferences.savingsAmount)
+                  : ""
+              }
+            />
+          </span>
+        </label>
+        <SchoolWeekdays value={book.preferences.schoolDays} />
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            name="reminderEnabled"
+            defaultChecked={book.preferences.reminderEnabled}
+          />
+          Remind me to save while Pomi is open
+        </label>
+        <label>
+          Reminder time
+          <input
+            type="time"
+            name="reminderTime"
+            required
+            defaultValue={book.preferences.reminderTime}
+          />
+        </label>
+        <p className="field-help">
+          Reminders appear on scheduled school days for the selected allowance
+          period. Pomi must be open.
+        </p>
+      </Form>
+    </section>
   );
 }
 
