@@ -70,7 +70,15 @@ describe("persistent notebook operations", () => {
     const book = {
       ...emptyNotebook(),
       initialized: true,
-      funds: [{ id: "one", name: "One", goal: null, archived: false }],
+      funds: [
+        {
+          id: "one",
+          name: "One",
+          goal: null,
+          archived: false,
+          savingMode: "flexible" as const,
+        },
+      ],
       entries: [makeEntry("opening_savings", 100, { fundId: "one" })],
     };
     await changeNotebook(() => book, false, db);
@@ -88,5 +96,143 @@ describe("persistent notebook operations", () => {
       db,
     );
     expect(totals((await db.notebooks.get("main"))!).allowance).toBe(1200);
+  });
+});
+
+describe("checklist persistence", () => {
+  it("migrates a stored legacy notebook while retaining its entries", async () => {
+    const db = database();
+    const legacy = {
+      ...emptyNotebook(),
+      version: 1,
+      initialized: true,
+      periods: undefined,
+      entries: [makeEntry("allowance", 12300)],
+    };
+    await db.notebooks.put(legacy as unknown as import("./model").Notebook);
+    const book = await openNotebook(db);
+    expect(book.version).toBe(4);
+    expect(book.periods).toEqual([]);
+    expect(book.entries).toEqual(legacy.entries);
+    expect(await db.notebooks.get("main")).toEqual(book);
+  });
+  it("warns and rolls back a day that exceeds available allowance until confirmed", async () => {
+    const { savePeriod, setAllowanceDay } = await import("./model");
+    const db = database();
+    await changeNotebook(
+      (book) =>
+        savePeriod(
+          { ...book, initialized: true },
+          {
+            id: "short",
+            total: 10000,
+            dailyAmount: 20000,
+            dayCount: 1,
+            date: "2026-11-15",
+            note: "",
+          },
+        ),
+      false,
+      db,
+    );
+    await changeNotebook(
+      (book) => {
+        book.periods[0].days[0].accounting = "legacy";
+        return book;
+      },
+      false,
+      db,
+    );
+    await expect(
+      changeNotebook(
+        (book) => setAllowanceDay(book, "short", 1, true),
+        false,
+        db,
+      ),
+    ).rejects.toBeInstanceOf(AllowanceWarning);
+    expect(
+      (await db.notebooks.get("main"))!.periods[0].days[0].amount,
+    ).toBeNull();
+    await changeNotebook(
+      (book) => setAllowanceDay(book, "short", 1, true),
+      true,
+      db,
+    );
+    expect(totals((await db.notebooks.get("main"))!).allowance).toBe(-10000);
+  });
+  it("serializes duplicate checklist checks, saves reloads, and rolls back excessive savings", async () => {
+    const { savePeriod, setAllowanceDay, setSavingsDay } =
+      await import("./model");
+    const db = database();
+    const input = {
+      id: "week",
+      total: 100000,
+      dailyAmount: 20000,
+      dayCount: 3,
+      date: "2026-11-15",
+      note: "",
+    };
+    await changeNotebook(
+      (book) =>
+        savePeriod(
+          {
+            ...book,
+            initialized: true,
+            funds: [
+              {
+                id: "one",
+                name: "One",
+                goal: null,
+                archived: false,
+                dailyAmount: 5000,
+              },
+            ],
+          },
+          input,
+        ),
+      false,
+      db,
+    );
+    await Promise.all(
+      [1, 2].map(() =>
+        changeNotebook(
+          (book) => setAllowanceDay(book, "week", 1, true),
+          false,
+          db,
+        ),
+      ),
+    );
+    await Promise.all(
+      [1, 2].map(() =>
+        changeNotebook(
+          (book) => setSavingsDay(book, "week", 1, "one", true),
+          false,
+          db,
+        ),
+      ),
+    );
+    const saved = (await db.notebooks.get("main"))!;
+    expect(totals(saved).allowance).toBe(95000);
+    expect(totals(saved).savings).toBe(5000);
+    db.close();
+    await db.open();
+    expect(await openNotebook(db)).toEqual(saved);
+    await expect(
+      changeNotebook(
+        (book) => {
+          book.funds[0].dailyAmount = 30000;
+          return setSavingsDay(
+            setAllowanceDay(book, "week", 2, true),
+            "week",
+            2,
+            "one",
+            true,
+          );
+        },
+        false,
+        db,
+      ),
+    ).rejects.toThrow("cannot exceed");
+    expect(await db.notebooks.get("main")).toEqual(saved);
   });
 });
