@@ -55,11 +55,11 @@ Each allowance receipt starts a new period. Earlier periods and unused money rem
 
 For example, ₱1,000 received with ₱200 per day and three days creates three daily budgets. Starting a day leaves the overall balance at ₱1,000. Recording ₱25 spent and ₱50 saved leaves ₱125 in that day’s budget and ₱925 available overall.
 
-I use Record expense from Home, Expenses, or a started Allowance day. I can assign an expense to a period and a started day, or leave it outside daily budgets. Expenses shows separate spent and remaining cards and a selected-day breakdown. Pomi asks before creating or worsening a negative daily or overall balance, and keeps my input if I cancel.
+I use Record expense from Home or the Expenses page heading. I can assign an expense to a period and a started day, or leave it outside daily budgets. Expenses shows separate spent and remaining cards and a selected-day breakdown. Pomi asks before creating or worsening a negative daily or overall balance, and keeps my input if I cancel.
 
 ### Saving each day
 
-I choose Fixed daily with an amount such as ₱50 or ₱100, or Flexible for manual deposits without daily requirements. Allowance groups each day’s allowance and savings checks together. Each fund’s checklist has the same days as the allowance period. I check the allowance day first, then mark savings when I actually put the money aside. The selected-fund panel in Savings holds the individual checklist. Its period selector shares the Allowance selection, keeping older periods accessible without showing every checklist at once.
+I choose Fixed daily with an amount such as ₱50 or ₱100, or Flexible for manual deposits without daily requirements. Allowance groups each day’s allowance and savings checks together. Each fund’s checklist has the same days as the allowance period. I check the allowance day first, then mark savings when I actually put the money aside. The selected-fund panel in Savings offers Daily checklist and Fund details views, optional goal progress, and Add Savings / Edit fund footer actions. Its period selector shares the Allowance selection, keeping older periods accessible without showing every checklist at once.
 
 For new daily budgets, checking ₱50 saved from a ₱200 day leaves ₱150 before any actual expenses. Savings cannot exceed the day’s remaining allowance. Previously checked historical days retain their original spending/savings split and balances.
 
@@ -73,7 +73,7 @@ When I withdraw from a fund, I choose whether to return the money to my availabl
 
 ### Managing funds and correcting entries
 
-I can create and rename funds, change their optional goals, and archive funds while keeping their records. A three-dot menu holds Edit, Withdraw, Archive/Restore, and Delete. I can permanently delete unused funds; funds with financial history must be archived instead.
+I can create and rename funds, change their optional goals, and archive funds while keeping their records. A three-dot menu holds Edit, Withdraw, Archive, and Delete. Unused funds move to Deleted funds in Settings; funds with financial history must be archived instead. Settings lets me restore archived or deleted funds, or permanently remove a deleted fund after confirmation. Deleted funds stay recoverable until I remove them; transaction deletion remains permanent.
 
 I can edit or delete incorrect entries, including starting balances. Checklist-generated daily entries open and focus their matching day in Allowance when edited; allowance receipts open their period settings; deleting them reverses their associated checkbox. A period receipt can only be deleted after its completed days and linked expenses are cleared. I confirm before deleting an entry, and my affected balances recalculate after a correction. I don't need a separate audit trail of previous versions.
 
@@ -106,6 +106,8 @@ I can collapse the desktop sidebar to an icon rail using its bottom toggle. Pomi
 ## Storage and Backup
 
 I store my records on my device and use Pomi offline after its initial loading. My entries remain available after closing or reloading the app.
+
+Settings also holds Archived funds and Deleted funds. Version 5 backups include deleted funds and continue accepting versions 1–4.
 
 Settings lets me set default daily allowance and savings amounts, school weekdays, and optional in-app reminders. Defaults affect new forms only. Reminders need Pomi to be open and start disabled.
 
@@ -147,4 +149,6 @@ I keep the application in `src/`, with money rules in `src/model.ts` and databas
 
 ## Project Status
 
-My notebook includes allowance periods, daily allowance and fixed savings checklists, manual expenses and withdrawals, multiple savings funds, optional goals, starting balances, editable history, archiving, offline storage, and backup export and restore. Older notebooks and version 1–3 backups migrate to version 4 without changing their balances, transaction dates, or entries. Previously checked days keep historical accounting; unrecorded and new days use actual spending. New exports use version 4 and require a current Pomi build. Older period schedules are inferred from receipt dates using Monday–Friday and can be corrected in period settings. New checklist transactions use scheduled school dates. I keep my data on this device and don't use accounts or automatic sync.
+My notebook includes allowance periods, daily allowance and fixed savings checklists, manual expenses and withdrawals, multiple savings funds, optional goals, starting balances, editable history, archiving, offline storage, and backup export and restore. Older notebooks and version 1–4 backups migrate to version 5 without changing their balances, transaction dates, or entries. Previously checked days keep historical accounting; unrecorded and new days use actual spending. New exports use version 5 and require a current Pomi build. Older period schedules are inferred from receipt dates using Monday–Friday and can be corrected in period settings. New checklist transactions use scheduled school dates. I keep my data on this device and don't use accounts or automatic sync.
+
+Allowance and Expenses show a name-only period dropdown beneath their titles. Edit period is in the adjacent three-dot menu. Optional goal and starting-savings fields are directly visible in fund forms.

@@ -9,11 +9,9 @@ Home, Allowance, Expenses, Savings, History, and Settings are the six sections.
 Desktop uses a labeled side rail with a bottom Collapse/Expand toggle. Collapsed mode is an 80px icon rail with accessible names and hover/focus tooltips. The preference is device-local and excluded from backups. Mobile shows five bottom links (Home, Allowance,
 Expenses, Savings, History), with a labeled Settings shortcut above every page.
 
-Home follows the supplied three-summary reference: Available allowance in peach,
-Total savings in mint, and Total expenses in blush. Amounts and labels
-align across equal-width desktop cards; repeated scope captions are omitted. Add allowance and Record expense remain
-compact secondary actions in their summaries. A burgundy Daily check-in action
-sits beside this week's scheduled savings days and completion progress. Home
+Home shows one peach Available allowance summary, calculated across periods after
+reserving started-day budgets and excluding no-class allocations. Add allowance
+and Record expense remain compact secondary actions in this summary. A compact burgundy Daily check-in action sits at the bottom-right of its card, beside this week's scheduled savings days and completion progress. Home
 prioritizes a period containing today's scheduled day over a historical period
 selected elsewhere; opening check-in focuses the matching allowance day. Skipped,
 unscheduled, and setup states have explicit guidance without creating transactions.
@@ -31,21 +29,24 @@ when space permits.
 
 Expenses follows the supplied compact notebook reference. A labeled allowance period
 selector shares a compact toolbar with Edit period. Select a day by opening its
-dated expense row; there is no separate day dropdown. Four peach, blush,
-mint, and neutral balance summaries show selected-day Daily allowance and notebook-wide
-Total spent, Saved, and Remaining balance, without repeated scope captions.
-Daily expenses is the default when a period exists. Each dated row shows its
-status and aligned allowance, spending, savings, and remaining figures. Selecting
+dated expense row; there is no separate day dropdown. Four balance summaries show selected-day Daily allowance and Daily remaining,
+plus notebook-wide Total spent and Remaining balance. Selected-day summaries
+include the date; Daily remaining shows a dash until that day starts.
+Daily expenses is the default when a period exists; every route entry and period
+change starts with all dated details collapsed. Each dated row shows its
+status and aligned spending and remaining figures. Selecting
 a row or day control opens that day's expenses and quick actions. Clicking an open
 row closes its detail while retaining the selected day and summary values;
-clicking it again reopens it. Selecting another day opens its detail. One Record
-expense action lives in the selected row, prefilling a started day; unstarted or
-skipped days open the general expense form. Without a period, one general
-recording action remains available beside the setup guidance.
+clicking it again reopens it. Selecting another day opens its detail. One Record expense action sits in the page heading. In Daily expenses it prefills
+the selected started day; skipped or unstarted days and All expenses open the
+general form. There are no duplicate recording buttons inside the records.
 Negative daily balances emphasize the signed amount without extra explanatory
 notes. Unstarted days retain Start day in Allowance; started and skipped days
 have no View day action. Historical accounting is retained without an Earlier
-record disclosure. All expenses shows the notebook-wide transaction list. Daily records use explicit assignments,
+record disclosure. Daily expenses and All expenses are separate views with visible pressed states;
+the selected view survives navigation. Without a period, All expenses is the
+default, and Daily expenses offers allowance setup. All expenses shows the
+notebook-wide transaction list. Daily records use explicit assignments,
 including historical checklist expenses, rather than inferring from transaction
 dates. The selected-day spending caption is omitted; the all-expenses count
 remains.
@@ -57,11 +58,13 @@ selected. Selection is view state, not financial data.
 
 Allowance places its period selector and Edit period between the notebook summaries
 and the daily checklist.
-Notebook-wide allowance, savings, and spending summaries omit repeated scope
-captions. Add allowance sits beside Daily allowance (or in the balance summary
-for a notebook with no periods). The instruction and compact period-plan line are omitted above the daily rows.
+Selected-period summaries show Given allowance (peach), Available allowance (mint),
+and No class allowance (blush). Starting a day reserves its budget; spending and
+savings within that budget do not deduct available allowance twice. Restoring a
+no-class day releases its excluded allowance. Add allowance sits in the page heading for both configured and empty notebooks. The instruction and compact period-plan line are omitted above the daily rows.
 
-Daily rows align date, allowance check, fund savings checks, and actions.
+Daily rows align date, allowance check, and actions. Fund savings checks live only
+on the Savings checklist.
 Spent, Money left, and Status columns are omitted; daily financial details remain
 in Expenses. Narrow layouts use labeled pairs in source order, without
 horizontal scrolling. Completed rows use mint; skipped rows use blush and show
@@ -74,33 +77,33 @@ schedules retain their explanation in the period editor. Preserve explicit setup
 unchecked, saved, saving, unavailable, and failed states.
 
 Period settings edit the plan, not the daily checklist. Fund forms show name and
-fixed daily amount first, with optional details behind a labeled disclosure.
+fixed daily amount first, with optional Goal amount always visible. Create fund also shows Already saved directly; no Additional details disclosure is used.
 Savings follows the supplied compact fund-list and detail reference. New fund
-and the notebook-wide Add Savings action sit beside the heading. A mint summary
-shows total savings and optional overall progress toward active fund goals.
+and the notebook-wide Add Savings action sit beside the heading. Mint summaries show the selected fund’s savings balance and optional goal progress.
 The compact fund list sits beside a wider selected-fund panel on desktop and
 stacks above it on narrow screens. Each card shows name, balance,
 and optional goal progress. Frequency and percentage-of-goal captions are omitted
-from fund lists; archived funds retain a visible Archived label. Saving frequency
+from fund lists; archived funds are managed only in Settings. Saving frequency
 and goal details remain available in the selected fund panel. A thin green border, mint surface, and
 pressed selection button identify the selected fund. Named three-dot menus retain
-Edit, Withdraw, Archive/Restore, and guarded Delete without repeating buttons on
+Edit, Withdraw, Archive, and guarded Delete without repeating buttons on
 every card. Selecting a fund focuses its detail heading; selection survives
 navigation and falls back to the first visible fund when filtered or removed.
-The selected panel offers Daily checklist and Fund details views as equally sized
-bordered, filled buttons without underlines. The selected view uses mint with a
-green border; the other uses cream with the standard control border. It also shows goal progress
-when configured, a fund-specific Add Savings action, and Edit fund. Funds without
-a checklist default to Fund details; fixed funds and flexible funds with
-historical day-linked entries default to Daily checklist. Skipped checklist days
-show static values instead of disabled checkboxes.
+The selected panel uses Daily checklist and Fund details view buttons, with mint
+selection styling. Fixed funds and funds with historical day-linked entries
+default to Daily checklist; other flexible funds default to Fund details. View
+selection survives navigation and resets when fund or eligibility changes.
+The header shows the icon, name, frequency, and configured daily amount. Goal progress appears only in the top selected-fund summary. Fund details uses
+a Detail / Value table for balance, frequency, goal, and status. Add Savings and Edit fund share the footer; fund-row menus retain
+Withdraw, Archive, and guarded Delete. Aligned fund rows and Settings recovery
+remain unchanged.
 The matching-day checklist instruction and fund-menu direction sentence are
 omitted; actual checklist prerequisites and fund actions remain. The inline
 period selector shares the Allowance selection. Fixed daily funds have compact
 rows with saved, pending, saving, no-class, and unavailable states; disabled rows
 retain other prerequisite messages without the “Check allowance first” hint. Flexible funds accept manual deposits. Changing to
 flexible preserves earlier fixed-day checks. Optional goals remain in the fund
-editor's Additional details section. Transaction actions use the same disclosure
+editor directly. Transaction actions use the same disclosure
 pattern, including Escape dismissal and trigger focus restoration. History follows the supplied compact-filter and grouped-transaction reference.
 Fund, entry type, and inclusive From/To filters retain their original matching
 rules. Selected values remain visible in their controls; there is no active-filter
@@ -115,7 +118,8 @@ The overall Transactions count and accessible result announcements remain. Newes
 sorting is view state; editable starting balances remain in a separate final
 group. Icons, short category labels, signed tabular amounts, and fund/source
 context distinguish transaction types. Edit/delete menus use a viewport-bounded
-native popover, retain confirmation and dialog focus restoration, and return
+native popover, use compact in-app delete confirmations with Cancel initially focused,
+retain retryable errors and dialog focus restoration, and return
 focus to the list heading after a successful deletion. The History Add transaction menu is omitted; creation actions remain on their
 existing task pages. History totals sit directly below the page heading and above
 the borderless white filter surface. Filters retain visible field labels and an
@@ -129,8 +133,8 @@ to their corresponding day in Allowance and focuses it.
 - Content fills the workspace with 32px desktop, 24px tablet, and 16px mobile gutters.
   Home groups three balance summaries above daily work, then pairs compact fund
   and activity previews, stacking in source order when needed.
-- Forms share 48px controls, 16px text, consistent chevrons, and one focus ring for money inputs. Balances use bold Lora text, matching the rest of the interface.
-- Lora throughout: headings, logo, controls, fund names, labels, financial values, and body text. The shared font tokens use locally bundled normal variable Lora (400–700), with Georgia/Times New Roman/serif fallbacks. Lora does not contain the Philippine peso sign, so a locally bundled Noto Serif subset supplies only U+20B1 (₱). Latin, extended Latin, and the peso-only WOFF2 files are precached for offline use; only primary Latin is preloaded. Font sources and licenses are recorded beside the files under `public/fonts/`.
+- Forms share 48px controls, 16px text, consistent chevrons, and one focus ring for money inputs. Balances use bold Lora with tabular numerals.
+- Lora for headings and financial figures, with the existing peso-only Noto Serif fallback and tabular numerals. DM Sans remains the body and control face. Lora Latin is preloaded; all font files are bundled and precached for offline use. Inline monetary values and selector amounts use the shared money style. DM Mono is not used. Sources and licenses live beside the files under `public/fonts/`.
 - Shared font tokens: 16px base and inputs, 14px supporting text, 13px small captions, and bold 32px summary amounts. Unitless line
   heights; tabular money figures; wrap long names and balances.
 - An 8px spacing scale for grouping, 16px surface radii, and 12px control radii.
@@ -233,7 +237,7 @@ Optional reminders appear in-app after a configurable local time, defaulting to
 be dismissed for the day. Reminders are off by default; no notification service
 or permission is needed.
 
-Notebook and backup version 4 preserve version 1–3 import compatibility. The last
+Notebook and backup version 5 preserve version 1–4 import compatibility. Version 4 migration adds an empty deleted-fund collection without changing recorded entries or day-accounting modes. The last
 export timestamp and reminder dismissal are device-local metadata, not restored
 financial data. Export feedback describes download initiation; restore success
 is announced only after the replacement transaction commits. Settings warns that
@@ -280,17 +284,22 @@ receive the larger column and actions at least 240px. Narrow layouts stack these
 sections with 24px separation. Summary scope captions are omitted throughout;
 field instructions, errors, empty-state guidance, and page subtitles remain.
 
-## Recent page layout adjustments
+## Fund recovery in Settings
 
-Allowance and Expenses show their summary cards immediately after the page title.
-Allowance period controls follow the summaries. Expenses always shows expandable
-daily records and the full notebook expense list, with a day-prefilled recording
-action in each expanded day and a general recording action in the full list.
-The expense view toggle is removed. Expense day details use the full width for
-records. The shared dialog width is 720px maximum with viewport gutters. Savings
-total and overall goal progress use separate cards. Fund view choices are
-bordered buttons with a mint selected state. Expenses period controls have no
-outer border.
+Savings lists only active funds. Settings has Archived funds and Deleted funds
+sections with counts and recoverable errors. Archiving preserves balances and
+history; Restore fund makes the fund active. Eligible empty funds move to Deleted
+funds with their metadata, zero-value opening record, and deletion timestamp.
+Funds with financial history or checklist dependencies cannot be deleted.
+Deleted funds remain until restored or permanently removed after confirmation.
+Restoration preserves IDs and makes the fund active; name collisions require
+renaming the existing fund first. Backups include deleted funds. Existing
+permanently deleted funds cannot be recovered. Transaction deletion is unchanged.
+
+Checkboxes retain native inputs and labeled keyboard interaction, with 24px
+cream rounded squares, a 6px radius, mint checked fill, green checkmark, distinct
+unavailable/saving states, and a visible focus ring. Forced colors uses native
+checkbox appearance. No new motion is introduced.
 
 ## Shared financial summaries and period controls
 
@@ -307,7 +316,69 @@ blush, and remaining balances or withdrawals to a neutral surface. Rose remains
 the action color and green remains the completion color; negative values use
 the existing danger treatment.
 
-Allowance and Expenses period fields are capped at 32rem, with their label
-above the selector and Edit period aligned to the field's bottom edge. Controls
-have at least 48px height and a 16px gap, stacking at 600px and below. Savings'
-standalone period label and selector align within the selected-fund panel.
+Allowance and Expenses use compact name-only header selectors with adjacent
+period menus. Savings retains its labeled detailed selector inside the checklist
+view. Controls keep visible focus and reflow at narrow widths.
+
+The Home daily check-in and weekly tracker share a white grouping surface. Fund
+and activity previews use equal desktop columns and stack at 1100px. New fund
+sits in the preview heading. Selected-fund Add Savings and Edit fund share its footer. Overall savings progress
+uses 24px padding and larger goal values.
+
+Goal-progress grouping draws structural inspiration from [Savings Dashboard](https://dribbble.com/shots/6904608-Savings-Dashboard-Clean-UI) and [Saving Goals Dashboard](https://dribbble.com/shots/26939907-Saving-Goals-Dashboard-Fintech-UI-UX): goal progress stays adjacent to the fund balance, followed by its actionable checklist. Pomi retains its own colors, typefaces, and content.
+
+## Compact period headers and destructive buttons
+
+Allowance and Expenses place a name-only Lora period selector below the title and
+bow, replacing their descriptive subtitles, Expenses date badge, and lower period
+toolbars. The closed selector is plain text with a chevron; its popup retains
+rounded white/pink selected styling and a checkmark. An adjacent Period actions
+three-dot menu contains Edit period. Add allowance and Record expense remain in
+the heading action area. Empty notebooks have no period selector or period menu.
+The Savings selector retains its detailed date/amount labels. All expenses remains
+notebook-wide even when a header period is selected.
+
+Filled destructive buttons use action-specific #B13E4E fill, #9F3444 hover/pressed
+fill, and white text. Error/negative-value text and menu danger treatments keep
+their existing semantic tokens. Focus remains visibly outlined.
+
+## Shared period/action row
+
+Allowance and Expenses place the period field and primary action in one row
+beneath the title. The period field has one control outline and contains two
+independent targets: the name-only selector and a 44px Period actions menu at its
+right edge. The field is capped at 320px and shrinks/wraps on narrow screens.
+Creation remains aligned to the workspace’s right edge, including empty states.
+
+On hover-capable devices the primary action is a 48px rose plus circle. Hover or
+keyboard-visible focus expands it leftward into a labeled pill. Its reserved
+slot is 176px wide, or 120px at 600px and below, so neighboring content never moves.
+CSS transitions use 150ms ease-out on inline size, padding, gap, and label opacity/
+maximum inline size. Touch devices always show the label, wrapping to two lines
+when needed. Reduced motion changes sizes immediately. Accessible action names
+and existing recording/assignment behavior remain unchanged.
+
+## Savings header selector and stable action reveal
+
+Savings uses a name-only active-fund dropdown below the title and bow, with a
+three-dot menu for Edit fund, Withdraw savings, Archive fund, and guarded Delete
+fund. A single 48px rose plus opens New fund / Add Savings on hover or activation.
+Add Savings prefills the selected fund. Empty notebooks keep New fund available.
+The existing two summaries precede the equal-width checklist/details switch and
+one full-width selected-fund panel. No expandable fund rows or footer actions
+remain. Archived/deleted fund management and financial storage are unchanged.
+The goal-free summary retains its decorative empty track and no-goal explanation.
+
+Allowance and Expenses retain the fixed-canvas expanding header actions. Savings
+uses a short popover reveal instead, with movement disabled for reduced motion.
+
+## Savings summary and checklist cards
+
+The allowance-period selector sits above the selected-fund frequency summary,
+which uses the mint savings surface. Daily checklist and Fund details buttons
+follow that summary, above their respective content. Goal progress appears only
+in the top summary and uses the selected fund’s balance and goal. The checklist
+retains its semantic Date / Savings / Status table; no-class rows have no checkbox.
+The header plus reveals stacked New fund and Add Savings pills. Touch first
+reveals the actions; keyboard focus reveals both. Movement respects reduced motion.
+No financial schema or dependency changes.
