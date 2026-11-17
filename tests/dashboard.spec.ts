@@ -92,39 +92,35 @@ test("keeps flexible funds compact, confirms deletion and restores menu focus", 
 }) => {
   await page.goto("/#savings");
   await expect(page.locator(".savings-funds .day-control")).toHaveCount(0);
-  await page.getByRole("button", { name: "New fund", exact: true }).click();
+  await menuAction(page, "New fund");
   await page.getByLabel("Fund name", { exact: true }).fill("Extra money");
   await chooseOption(page.getByLabel("Saving frequency"), "flexible");
   await expect(page.getByLabel("Daily savings amount")).toHaveCount(0);
   await page.getByRole("button", { name: "Create fund", exact: true }).click();
-  const fund = page.getByRole("article").filter({
-    has: page.getByRole("heading", { name: "Extra money", exact: true }),
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "Extra money",
   });
-  await expect(fund.locator(".fund-frequency, .fund-card-goal")).toHaveCount(0);
-  await fund
-    .getByRole("button", { name: "View checklist for Extra money" })
-    .click();
+  const fund = page
+    .locator(".savings-heading details")
+    .filter({ has: page.getByLabel("Fund actions", { exact: true }) });
   await expect(page.locator(".fund-details-content")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Fund details", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#fund-checklist-heading")).toBeFocused();
   await fund.locator("summary").focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Escape");
   await expect(fund.locator("summary")).toBeFocused();
-  await page
-    .locator(".selected-fund-actions")
-    .getByRole("button", { name: "Add Savings", exact: true })
-    .click();
+  await menuAction(page, "Add Savings");
   await chooseOption(page.getByLabel("Where is this money from?"), "extra");
   await page
     .getByRole("dialog")
     .getByRole("spinbutton", { name: "Amount", exact: true })
     .fill("100");
   await page.getByRole("button", { name: "Save entry", exact: true }).click();
-  await expect(fund.locator(".fund-value")).toHaveText("₱100.00");
+  await expect(page.locator(".fund-details-content")).toContainText("₱100.00");
   await fund.locator("summary").click();
   await expect(
     fund.getByRole("button", { name: "Delete fund" }),
@@ -136,21 +132,46 @@ test("keeps flexible funds compact, confirms deletion and restores menu focus", 
   await expect(
     page.getByRole("button", { name: "Delete Savings deposit", exact: true }),
   ).not.toBeVisible();
-  page.once("dialog", (dialog) => dialog.dismiss());
   await menuAction(page, "Delete Savings deposit");
+  const confirmation = page.getByRole("dialog", { name: "Delete record?" });
+  await expect(
+    confirmation.getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(
+    page
+      .locator(".entry-row")
+      .filter({ hasText: "Savings deposit" })
+      .locator("summary"),
+  ).toBeFocused();
+  await menuAction(page, "Delete Savings deposit");
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
   await expect(
     page.locator(".entry-row").filter({ hasText: "Savings deposit" }),
   ).toHaveCount(1);
-  page.once("dialog", (dialog) => dialog.accept());
   await menuAction(page, "Delete Savings deposit");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Delete record", exact: true })
+    .click();
   await expect(
     page.locator(".entry-row").filter({ hasText: "Savings deposit" }),
   ).toHaveCount(0);
+  await expect(page.locator("#history-transactions-title")).toBeFocused();
   await page.getByRole("link", { name: "Savings", exact: true }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await fund.locator("summary").click();
   await fund.getByRole("button", { name: "Delete fund" }).click();
-  await expect(fund).toHaveCount(0);
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Delete record", exact: true })
+    .click();
+  await expect(
+    page
+      .locator(".savings-fund-selector select option")
+      .filter({ hasText: "Extra money" }),
+  ).toHaveCount(0);
 });
 
 test("renders realistic content at desktop and tablet widths", async ({
@@ -176,10 +197,9 @@ test("renders realistic content at desktop and tablet widths", async ({
     .click();
   await page.getByRole("link", { name: "Savings", exact: true }).click();
   for (const name of ["School supplies", "Emergency money"]) {
-    await page.getByRole("button", { name: "New fund", exact: true }).click();
+    await menuAction(page, "New fund");
     await page.getByLabel("Fund name", { exact: true }).fill(name);
     await chooseOption(page.getByLabel("Saving frequency"), "flexible");
-    await page.getByText("Additional details", { exact: true }).click();
     await page.getByLabel("Goal amount").fill("1000");
     await page
       .getByRole("spinbutton", { name: "Already saved", exact: true })
@@ -276,7 +296,7 @@ test("renders realistic content at desktop and tablet widths", async ({
           }
           expect(expenses!.y).toBeGreaterThan(savings!.y);
         }
-        if (width > 1000) {
+        if (width > 1100) {
           expect(Math.abs(funds!.y - activity!.y)).toBeLessThan(2);
         } else {
           expect(activity!.y).toBeGreaterThanOrEqual(funds!.y + funds!.height);

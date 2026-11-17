@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url(/fonts/dm-sans/dm-sans-variable.ttf) format("truetype");
+}
 /* Peso-only fallback: Lora does not contain U+20B1. See its bundled OFL.txt. */
 @font-face {
   font-family: "Noto Serif Peso";
@@ -73,7 +80,7 @@
   --color-summary-savings: var(--color-complete-soft);
   --color-summary-spending: var(--color-blush);
   --color-summary-neutral: var(--color-disabled);
-  --font-body: var(--serif);
+  --font-body: "DM Sans", system-ui, sans-serif;
   --text-body: 1rem;
   --text-supporting: 0.875rem;
   --text-caption: 0.8125rem;
@@ -156,7 +163,7 @@ p {
 h1,
 h2,
 h3 {
-  font-family: var(--serif);
+  font-family: var(--font-body);
   font-weight: 400;
   line-height: 1.25;
   text-wrap: balance;
@@ -4401,7 +4408,7 @@ form label.checkbox-label {
   font-weight: 600;
 }
 .home-dashboard .hero-balance {
-  font: 700 1.75rem/1.2 var(--font-body);
+  font: 700 1.75rem/1.2 var(--serif);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -4458,7 +4465,7 @@ form label.checkbox-label {
   min-width: 0;
 }
 .home-dashboard .weekly-heading h2 {
-  font-family: var(--serif);
+  font-family: var(--font-body);
   font-weight: 600;
 }
 .home-dashboard .weekly-school-days {
@@ -5064,7 +5071,7 @@ form label.checkbox-label {
 .main-content .financial-summary .summary-amount {
   display: block;
   margin: 0;
-  font: 700 var(--text-balance)/1.2 var(--font-body);
+  font: 700 var(--text-balance)/1.2 var(--serif);
   font-variant-numeric: tabular-nums;
   letter-spacing: normal;
   overflow-wrap: anywhere;
@@ -5152,4 +5159,1851 @@ form label.checkbox-label {
   .main-content .summary-group {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Shared typography and screenshot-requested refinements. */
+h1,
+h2,
+h3 {
+  font-weight: 600;
+}
+h2 {
+  line-height: 1.3;
+}
+h3 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+button {
+  font-weight: 500;
+}
+input[inputmode="decimal"],
+.entry-end,
+.goal-caption,
+.fund-details-content dd {
+  font-variant-numeric: tabular-nums;
+}
+.confirmation-dialog {
+  width: min(480px, calc(100% - 32px));
+}
+.home-checkin-row {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-surface);
+  padding: 16px;
+  gap: 16px;
+}
+.home-checkin-row .panel {
+  margin: 0;
+}
+.home-dashboard .dashboard-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.home-funds-actions {
+  margin: 0;
+}
+.home-funds-actions .button {
+  min-height: 40px;
+}
+.section-title {
+  flex-wrap: wrap;
+}
+.expense-controls.daily-budget-selectors {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.daily-budget-selectors .select-trigger {
+  border: 1px solid var(--color-control);
+}
+.expense-day-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.expenses-page .expense-day-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.expenses-page .entry {
+  padding-block: 16px;
+}
+.selected-fund-heading {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.selected-fund-heading > div:not(.selected-fund-actions) {
+  flex: 1;
+  min-width: 0;
+}
+.selected-fund-heading .selected-fund-actions {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.savings-overall-progress {
+  padding: 24px;
+  gap: 16px;
+}
+.savings-overall-progress > div {
+  flex: 1;
+  min-width: 0;
+}
+.savings-overall-progress h2 {
+  margin-bottom: 16px;
+}
+.savings-overall-progress .goal-caption {
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.savings-overall-progress .goal-caption > span:first-child {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+@media (max-width: 1100px) {
+  .home-dashboard .dashboard-details,
+  .home-dashboard .home-checkin-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .selected-fund-heading .selected-fund-actions {
+    flex-basis: 100%;
+  }
+  .selected-fund-actions .button {
+    flex: 1;
+  }
+  .dialog-actions .button {
+    flex: 1;
+  }
+}
+
+/* Screenshot refinements: shared typography, task actions, and fund workspace. */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+.money,
+.summary-amount,
+.hero-balance,
+.fund-value,
+.entry-end > strong,
+.expense-day-metrics strong,
+.day-control-name strong,
+.goal-caption,
+.home-fund-heading > span,
+.history-summary strong,
+.allowance-preview strong,
+input[inputmode="decimal"] {
+  font-family: var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+.home-dashboard .weekly-heading h2,
+.selected-fund-goal h3 {
+  font-family: var(--serif);
+}
+.home-daily-checkin {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+.home-daily-checkin .daily-checkin-link {
+  grid-column: 1 / -1;
+  justify-self: end;
+  align-self: end;
+  min-height: 40px;
+  width: auto;
+  margin-block-start: 8px;
+  padding: 8px 12px;
+  font-size: var(--text-supporting);
+}
+.home-daily-checkin .daily-checkin-link svg {
+  width: 16px;
+  height: 16px;
+}
+.expenses-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.period-toolbar,
+.expenses-page .expense-controls.daily-budget-selectors {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.period-toolbar > .period-selector,
+.expenses-page .expense-controls.daily-budget-selectors > .period-selector {
+  flex: 1 1 320px;
+  max-width: 640px;
+  width: 100%;
+  min-width: 0;
+}
+input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  margin: 0;
+  border: 1px solid var(--color-control);
+  border-radius: 6px;
+  background-color: var(--color-bg);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+input[type="checkbox"]:checked {
+  border-color: var(--color-complete);
+  background-color: var(--color-complete-soft);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4 4L19 6' fill='none' stroke='%2335634e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+input[type="checkbox"]:disabled {
+  background-color: var(--color-disabled);
+  cursor: not-allowed;
+}
+input[type="checkbox"][aria-disabled="true"] {
+  cursor: progress;
+}
+@media (forced-colors: active) {
+  input[type="checkbox"] {
+    appearance: auto;
+    background-image: none;
+  }
+}
+.savings-page .savings-workspace {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
+}
+.savings-page .fund-card {
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+}
+.fund-selection-heading {
+  margin: 0;
+  min-width: 0;
+}
+.fund-select {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  min-height: 44px;
+  gap: 8px;
+}
+.fund-select > svg {
+  display: none;
+}
+.fund-select .fund-value {
+  white-space: nowrap;
+  font-size: var(--text-supporting);
+}
+.savings-page .fund-card .fund-more {
+  align-self: center;
+}
+.savings-page .fund-checklist-panel {
+  padding: 24px;
+}
+.selected-fund-heading {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 16px;
+  align-items: start;
+}
+.selected-fund-heading h2 {
+  font-size: 1.5rem;
+}
+.selected-fund-overview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-block: 24px;
+}
+.selected-fund-overview > div {
+  min-width: 0;
+}
+.fund-detail-balance {
+  display: block;
+  font-size: 2rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  margin-block-start: 8px;
+}
+.selected-fund-overview .button {
+  flex-shrink: 0;
+}
+.selected-fund-goal {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-block-end: 32px;
+}
+.selected-fund-daily > h3 {
+  font-size: 1.125rem;
+  margin-block-end: 16px;
+}
+.fund-details-content {
+  margin-block-start: 24px;
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 16px;
+}
+.fund-details-content > summary {
+  font-weight: 500;
+  min-height: 44px;
+  cursor: pointer;
+}
+.fund-details-content dl {
+  margin-block: 16px 0;
+}
+.settings-primary {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  min-width: 0;
+}
+.fund-management > section {
+  margin-block-start: 32px;
+}
+.fund-management h3 {
+  margin-block-end: 16px;
+}
+.managed-funds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.managed-funds li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-block: 16px;
+  border-block-end: 1px solid var(--color-line);
+}
+.managed-funds li > div {
+  min-width: 0;
+}
+.managed-funds li strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.managed-fund-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 1024px) {
+  .savings-page .savings-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .period-toolbar,
+  .expenses-page .expense-controls.daily-budget-selectors {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .period-toolbar > .period-selector,
+  .expenses-page .expense-controls.daily-budget-selectors > .period-selector {
+    flex: none;
+    max-width: none;
+  }
+  .period-toolbar > .button,
+  .expense-controls > .button {
+    width: 100%;
+  }
+  .savings-page .fund-checklist-panel {
+    padding: 16px;
+  }
+  .selected-fund-heading {
+    gap: 8px;
+  }
+  .managed-fund-actions {
+    width: 100%;
+  }
+}
+
+/* Keep the fund's identifying content and figures on the same row at every width. */
+.fund-select .fund-card-figures {
+  grid-column: 3;
+  grid-row: 1;
+}
+.fund-select .fund-value {
+  text-align: end;
+}
+.home-fund-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.home-fund-heading > span {
+  white-space: nowrap;
+}
+.home-daily-checkin {
+  row-gap: 8px;
+}
+.home-daily-checkin .daily-checkin-link {
+  margin-block-start: 0;
+  grid-row: 2;
+}
+.home-checkin-row {
+  padding: 8px;
+}
+
+/* Compact page-period navigation and restored fund views. */
+:root {
+  --color-danger-action: #b13e4e;
+  --color-danger-action-hover: #9f3444;
+  --color-on-danger-action: #ffffff;
+}
+.button.danger,
+.button.danger:focus-visible {
+  background: var(--color-danger-action);
+  color: var(--color-on-danger-action);
+}
+@media (hover: hover) {
+  .button.danger:not(:disabled):hover {
+    background: var(--color-danger-action-hover);
+  }
+}
+.button.danger:not(:disabled):active {
+  background: var(--color-danger-action-hover);
+}
+.header-period-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 8px;
+  min-width: 0;
+}
+.header-period-row .period-selector {
+  min-width: 0;
+  max-width: 32rem;
+}
+.period-selector-header .select-trigger {
+  background: transparent;
+  border: 0;
+  padding: 0 8px 0 0;
+  min-height: 40px;
+  width: auto;
+  max-width: 100%;
+  font: 400 1.125rem/1.5 var(--serif);
+  gap: 8px;
+}
+.period-selector-header .select-trigger > span {
+  overflow-wrap: anywhere;
+}
+.page-heading > div {
+  min-width: 0;
+}
+.page-heading h1 > .sticker {
+  width: 40px;
+  height: 32px;
+  margin-inline-start: 16px;
+}
+.selected-fund-heading {
+  display: flex;
+  align-items: start;
+}
+.selected-fund-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.selected-fund-goal {
+  padding: 16px;
+  background: var(--color-bg);
+  border-radius: var(--radius-control);
+  margin-block-end: 16px;
+}
+.fund-details-content {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.selected-fund-actions {
+  display: flex;
+  gap: 8px;
+  margin-block-start: 24px;
+}
+.selected-fund-actions > .button {
+  flex: 1;
+}
+
+.period-selector-header .select-options {
+  min-width: min(280px, calc(100vw - 32px));
+}
+.header-period-row .period-selector-header {
+  margin: 0;
+}
+
+/* Period navigation and creation share a stable row beneath the page title. */
+.period-page-heading {
+  display: block;
+}
+.period-page-heading .header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-block-start: 16px;
+  width: 100%;
+}
+.header-controls .header-period-row {
+  flex: 1 1 320px;
+  max-width: 320px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 0;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--color-control);
+  border-radius: var(--radius-control);
+  min-height: 48px;
+}
+.header-controls .period-selector-header {
+  width: 100%;
+}
+.header-controls .period-selector-header .select-trigger {
+  width: 100%;
+  min-height: 46px;
+  font-size: 1rem;
+}
+.header-action-slot {
+  flex: 0 0 176px;
+  width: 176px;
+  display: flex;
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+.header-action-slot .expanding-action {
+  flex: none;
+  inline-size: 48px;
+  height: 48px;
+  min-height: 48px;
+  border-radius: 24px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.expanding-action-label {
+  max-inline-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+.header-action-slot .expanding-action:focus-visible {
+  inline-size: 176px;
+  padding-inline: 8px;
+  gap: 8px;
+}
+.expanding-action:focus-visible .expanding-action-label {
+  max-inline-size: 136px;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .header-action-slot .expanding-action:hover {
+    inline-size: 176px;
+    padding-inline: 8px;
+    gap: 8px;
+  }
+  .expanding-action:hover .expanding-action-label {
+    max-inline-size: 136px;
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  .header-action-slot .expanding-action {
+    inline-size: 176px;
+    padding-inline: 8px;
+    gap: 8px;
+  }
+  .expanding-action-label {
+    max-inline-size: 136px;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .header-action-slot .expanding-action {
+    transition:
+      inline-size 150ms ease-out,
+      gap 150ms ease-out,
+      padding-inline 150ms ease-out;
+  }
+  .expanding-action-label {
+    transition:
+      max-inline-size 150ms ease-out,
+      opacity 150ms ease-out;
+  }
+}
+@media (max-width: 600px) {
+  .period-page-heading .header-controls {
+    gap: 8px;
+  }
+  .header-action-slot {
+    flex-basis: 120px;
+    width: 120px;
+  }
+  .header-action-slot .expanding-action {
+    max-inline-size: 120px;
+  }
+  .expanding-action-label {
+    white-space: normal;
+  }
+}
+.expanding-action-label {
+  min-inline-size: 0;
+  color: inherit;
+}
+@media (hover: none) {
+  .header-action-slot .expanding-action,
+  .expanding-action-label {
+    transition: none;
+  }
+}
+
+/* Borderless navigation, stable text reveal, and full-width fund disclosures. */
+.header-controls .header-period-row {
+  border-color: transparent;
+}
+.header-controls .period-selector-header .select-trigger {
+  padding-inline: 16px;
+  border-radius: var(--radius-control);
+}
+.header-action-slot .expanding-action {
+  inline-size: 176px;
+  max-inline-size: 100%;
+  padding-inline: 8px;
+  gap: 8px;
+  clip-path: inset(0 0 0 calc(100% - 48px) round 24px);
+  transition: none;
+}
+.expanding-action-label {
+  max-inline-size: none;
+  flex: 1;
+  opacity: 0;
+  transition: none;
+}
+.expanding-action > svg {
+  transform: translateX(64px);
+}
+.header-action-slot:has(.expanding-action:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+.header-action-slot .expanding-action:focus-visible {
+  outline: none;
+  clip-path: inset(0 round 24px);
+}
+.expanding-action:focus-visible > svg {
+  transform: translateX(0);
+}
+.expanding-action:focus-visible .expanding-action-label {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .header-action-slot .expanding-action:not(:disabled):hover {
+    clip-path: inset(0 round 24px);
+  }
+  .expanding-action:not(:disabled):hover > svg {
+    transform: translateX(0);
+  }
+  .expanding-action:not(:disabled):hover .expanding-action-label {
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  .header-action-slot .expanding-action {
+    clip-path: inset(0 round 24px);
+  }
+  .expanding-action > svg {
+    transform: none;
+  }
+  .expanding-action-label {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .header-action-slot .expanding-action {
+    transition: clip-path 150ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .expanding-action > svg {
+    transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .expanding-action-label {
+    transition: opacity 100ms ease-out;
+  }
+}
+@media (max-width: 600px) {
+  .header-action-slot .expanding-action {
+    inline-size: 120px;
+  }
+  .expanding-action > svg {
+    transform: translateX(36px);
+  }
+  .expanding-action:focus-visible > svg {
+    transform: none;
+  }
+  .savings-heading .header-controls {
+    flex-wrap: wrap;
+  }
+  .savings-heading-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 600px) and (hover: none) {
+  .expanding-action > svg {
+    transform: none;
+  }
+}
+.savings-heading-actions {
+  display: flex;
+  gap: 8px;
+}
+.savings-page .savings-workspace {
+  display: block;
+}
+.savings-page .fund-grid.savings-funds {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.savings-page .fund-checklist-panel {
+  border-block-start: 1px solid var(--color-line);
+  padding: 24px;
+}
+.fund-select {
+  grid-template-columns: 32px minmax(0, 1fr) auto 18px;
+}
+.fund-select > .fund-disclosure-chevron {
+  display: block;
+  grid-column: 4;
+  grid-row: 1;
+}
+.fund-select[aria-expanded="true"] > .fund-disclosure-chevron {
+  transform: rotate(180deg);
+}
+.empty-goal-track {
+  margin-block-start: 16px;
+}
+.savings-goal-hint > div {
+  width: 100%;
+}
+.header-action-slot .expanding-action {
+  position: relative;
+}
+.expanding-action > svg {
+  position: absolute;
+  inset-inline-start: 15px;
+  top: 15px;
+  transform: translateX(128px);
+}
+.expanding-action-label {
+  padding-inline-start: 26px;
+}
+@media (max-width: 600px) {
+  .expanding-action > svg {
+    transform: translateX(72px);
+  }
+}
+@media (hover: none) {
+  .expanding-action > svg {
+    transform: none;
+  }
+}
+.savings-page .fund-choice .fund-checklist-panel {
+  background: var(--color-surface);
+  border-radius: 0 0 var(--radius-surface) var(--radius-surface);
+}
+.header-action-slot .expanding-action.secondary {
+  border: 0;
+  background: var(--color-surface);
+}
+.expanding-action.secondary::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: 48px;
+  border: 1px solid var(--color-control);
+  border-radius: 24px;
+  pointer-events: none;
+}
+.expanding-action.secondary:focus-visible::after {
+  inline-size: 100%;
+}
+@media (hover: hover) {
+  .expanding-action.secondary:not(:disabled):hover::after {
+    inline-size: 100%;
+  }
+}
+@media (hover: none) {
+  .expanding-action.secondary::after {
+    inline-size: 100%;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .expanding-action.secondary::after {
+    transition: inline-size 150ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+@media (max-width: 600px) {
+  .header-controls .header-period-row {
+    padding-inline: 0;
+  }
+  .period-selector-header .select-trigger > span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Savings uses the shared header selector and page-level view switch. */
+.savings-fund-selector .select-control {
+  min-width: 0;
+}
+.savings-fund-selector .select-trigger {
+  border-color: transparent;
+  background: transparent;
+  min-height: 46px;
+  padding-inline: 16px;
+  font-family: var(--font-heading, "Lora", serif);
+  text-align: start;
+}
+.savings-fund-selector .select-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.savings-add-menu {
+  margin-inline-start: auto;
+}
+.savings-add-menu > summary {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent);
+  color: white;
+}
+.savings-add-menu .action-popover {
+  opacity: 1;
+}
+.savings-workspace > .fund-checklist-panel {
+  width: 100%;
+  margin: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .savings-add-menu[open] .action-popover {
+    animation: savings-menu-reveal 120ms ease-out;
+  }
+  @keyframes savings-menu-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+.savings-heading .header-controls {
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+.savings-heading .header-controls .savings-fund-selector {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.savings-add-menu {
+  flex: 0 0 48px;
+}
+/* Selected fund summary and period checklist use separate notebook surfaces. */
+.savings-page .fund-checklist-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.savings-fund-summary {
+  margin-block-end: 24px;
+  padding: 24px;
+}
+.savings-fund-summary .selected-fund-goal {
+  padding: 0;
+  margin: 24px 0 0;
+  background: transparent;
+}
+.savings-checklist-card {
+  padding: 24px;
+}
+.savings-checklist-card .period-selector-header {
+  max-width: 320px;
+  margin-block-end: 24px !important;
+}
+.savings-checklist-card .period-selector-header .select-trigger {
+  font-size: var(--text-section, 1.5rem);
+  padding-inline: 0 16px;
+  background: transparent;
+}
+.savings-days-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.savings-days-table th,
+.savings-days-table td {
+  padding: 16px 8px;
+  text-align: start;
+  border-block-end: 1px solid var(--color-line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.savings-days-table thead th {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: var(--text-supporting);
+}
+.savings-days-table th:first-child {
+  width: 42%;
+}
+.savings-days-table th:last-child {
+  width: 26%;
+}
+.savings-days-table tbody th {
+  font: 600 var(--text-supporting)/1.5 var(--font-body);
+}
+.savings-days-table small {
+  display: block;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.savings-days-table .day-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.savings-days-table .day-control {
+  margin: 0;
+}
+.savings-days-table .day-control-name strong {
+  font-family: var(--font-money);
+}
+.savings-days-table .is-saved {
+  background: var(--color-complete-soft);
+}
+.savings-sliding-actions {
+  position: relative;
+  flex: 0 0 176px;
+  height: 48px;
+  margin-inline-start: auto;
+}
+.savings-sliding-actions .button {
+  width: 100%;
+  height: 48px;
+  border-radius: 24px;
+  gap: 8px;
+}
+.savings-slide-main {
+  clip-path: inset(0 0 0 calc(100% - 48px) round 24px);
+}
+.savings-slide-main > svg {
+  transform: translateX(128px);
+  position: absolute;
+  inset-inline-start: 15px;
+}
+.savings-slide-main > span {
+  opacity: 0;
+  padding-inline-start: 24px;
+}
+.savings-slide-new {
+  position: absolute;
+  inset-block-end: 100%;
+  margin-block-end: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+.savings-sliding-actions.is-open .savings-slide-main {
+  clip-path: inset(0 round 24px);
+}
+.savings-sliding-actions.is-open .savings-slide-main > svg {
+  transform: none;
+}
+.savings-sliding-actions.is-open .savings-slide-main > span {
+  opacity: 1;
+}
+.savings-sliding-actions.is-open .savings-slide-new {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+.savings-sliding-actions::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 100%;
+}
+.savings-sliding-actions:has(:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .savings-slide-main {
+    transition: clip-path 150ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .savings-slide-main > svg,
+  .savings-slide-new {
+    transition:
+      transform 150ms cubic-bezier(0.2, 0, 0, 1),
+      opacity 100ms ease-out;
+  }
+  .savings-slide-main > span {
+    transition: opacity 100ms ease-out;
+  }
+}
+@media (max-width: 600px) {
+  .savings-sliding-actions {
+    flex-basis: 120px;
+  }
+  .savings-slide-main > svg {
+    transform: translateX(72px);
+  }
+  .savings-sliding-actions .button {
+    font-size: 12px;
+  }
+  .savings-fund-summary,
+  .savings-checklist-card {
+    padding: 16px;
+  }
+  .savings-days-table th,
+  .savings-days-table td {
+    padding: 16px 4px;
+  }
+  .savings-days-table th:first-child {
+    width: 38%;
+  }
+  .savings-days-table th:last-child {
+    width: 30%;
+  }
+  .savings-days-table .day-check {
+    flex-wrap: wrap;
+  }
+}
+.savings-sliding-actions {
+  flex-basis: 48px;
+  width: 48px;
+  z-index: 2;
+}
+.savings-sliding-actions .button {
+  width: 176px;
+  position: absolute;
+  inset-inline-end: 0;
+}
+.savings-slide-main {
+  inset-block-start: 0;
+}
+@media (max-width: 600px) {
+  .savings-sliding-actions .button {
+    width: 120px;
+  }
+}
+.savings-checklist-card .period-selector-header {
+  width: min(100%, 320px);
+  min-width: 0;
+}
+.savings-days-table .day-check {
+  border: 0;
+  padding: 0;
+  min-height: 48px;
+  background: transparent;
+}
+.savings-days-table .savings-check-status {
+  white-space: normal;
+  max-width: 100%;
+}
+.savings-days-table .day-state {
+  overflow-wrap: anywhere;
+}
+.savings-sliding-actions .button {
+  overflow: hidden;
+}
+.savings-days-table .savings-check-status {
+  display: inline-block;
+  padding: 4px;
+  font-size: 11px;
+  overflow-wrap: normal;
+}
+.savings-days-table .day-check:has(input:disabled) {
+  background: transparent;
+}
+
+/* Allowance reserves and selected-fund views. */
+.home-dashboard .balance-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.allowance-columns,
+.allowance-days .checkin-day {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(208px, 1.2fr);
+}
+.savings-fund-summary {
+  background: var(--color-summary-savings);
+}
+.fund-checklist-panel > .period-selector-header {
+  margin-block-end: 16px;
+  max-width: 100%;
+}
+.fund-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.fund-details-table th,
+.fund-details-table td {
+  padding: 16px;
+  text-align: start;
+  overflow-wrap: anywhere;
+  border-block-end: 1px solid var(--color-line);
+}
+.fund-details-table tbody th {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.fund-details-table td {
+  font-weight: 600;
+}
+@media (max-width: 1200px) {
+  .allowance-days .checkin-day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .allowance-days .day-actions {
+    grid-column: 1;
+  }
+}
+
+.savings-checklist-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin-block-end: var(--space-2);
+}
+.savings-checklist-toolbar .period-selector-header {
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+}
+.savings-checklist-toolbar .fund-detail-switch {
+  display: flex;
+  width: 100%;
+  margin: 0;
+}
+.savings-checklist-content {
+  padding-block-start: var(--space-2);
+}
+.savings-checklist-card > .fund-details-content {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fund-details-table th,
+.fund-details-table td {
+  padding: 16px 8px;
+  vertical-align: middle;
+}
+.fund-details-table thead th {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: var(--text-supporting);
+}
+.fund-details-table tbody th {
+  text-align: start;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .savings-checklist-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+/* Keep column names available to assistive technology without repeating them visually. */
+.savings-days-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.savings-checklist-toolbar {
+  margin-block-end: 8px;
+}
+.savings-checklist-content {
+  padding-block-start: 0;
+}
+
+/* Give goal progress a clear heading, aligned figures, and one quiet meter. */
+.savings-page .savings-overall-progress {
+  align-items: stretch;
+  justify-content: center;
+  padding: 24px;
+}
+.savings-page .savings-overall-progress h2 {
+  margin: 0 0 12px;
+}
+.savings-page .savings-overall-progress .goal-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 12px;
+  font-size: var(--text-supporting);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.savings-page .savings-overall-progress .goal-caption > span:first-child {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.savings-page .savings-overall-progress .goal-meter {
+  height: 8px;
+}
+@media (max-width: 600px) {
+  .savings-page .savings-overall-progress {
+    padding: 16px;
+  }
+  .savings-page .savings-overall-progress .goal-caption {
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep Savings checklist checkboxes full-size within the compact table. */
+.savings-days-table .day-check input[type="checkbox"] {
+  box-sizing: border-box;
+  flex: 0 0 24px;
+  inline-size: 24px;
+  block-size: 24px;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+}
+.expenses-page .expense-day-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Three remaining expense summaries fill the available row evenly. */
+.expenses-page .expenses-notebook-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.savings-checklist-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.savings-checklist-toolbar .period-selector-header {
+  flex: 1 1 auto;
+  width: auto;
+}
+.savings-checklist-toolbar > details.action-menu {
+  flex: 0 0 auto;
+}
+@media (max-width: 600px) {
+  .savings-checklist-toolbar {
+    flex-direction: row;
+  }
+  .expenses-page .expenses-notebook-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.savings-checklist-toolbar > details.action-menu {
+  margin-inline-start: auto;
+}
+
+/* Keep the period selector with its daily expense rows. */
+.expenses-page .expense-day-list {
+  padding: var(--space-3);
+  border-radius: var(--radius-surface);
+}
+.expense-period-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  margin-block-end: var(--space-1);
+}
+.expense-period-toolbar .header-period-row {
+  margin: 0;
+  width: 100%;
+}
+.expense-period-toolbar .period-selector {
+  flex: 1 1 auto;
+}
+.expense-period-toolbar .action-menu {
+  margin-inline-start: auto;
+}
+
+.expenses-page .expenses-heading .header-action-slot {
+  position: fixed;
+  inset-inline-end: max(24px, env(safe-area-inset-right));
+  inset-block-end: max(24px, env(safe-area-inset-bottom));
+  z-index: 30;
+  flex: none;
+  width: 48px;
+  margin: 0;
+}
+.expenses-page .expenses-heading .expanding-action {
+  box-shadow: 0 4px 14px #40353524;
+}
+.expense-period-toolbar .period-selector-header .select-trigger {
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+@media (max-width: 600px) {
+  .expenses-page .expenses-heading .header-action-slot {
+    inset-inline-end: max(16px, env(safe-area-inset-right));
+    inset-block-end: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+.expense-period-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.expense-period-toolbar > .period-selector {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: center;
+}
+.expense-period-toolbar
+  .period-selector-header
+  .select-trigger:not(:disabled):hover {
+  background: transparent;
+}
+.expense-period-toolbar > details.action-menu {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  align-self: center;
+}
+/* Expenses day rows use the same continuous, ruled table rhythm as Savings. */
+.expenses-page .expense-day-list {
+  gap: 0;
+}
+.expenses-page .expense-day {
+  border: 0;
+  border-block-start: 1px solid var(--color-line);
+  border-radius: 0;
+  background: var(--color-surface);
+}
+.expenses-page .expense-day:last-child {
+  border-block-end: 1px solid var(--color-line);
+}
+.expenses-page .expense-day-toggle {
+  grid-template-columns: 24px minmax(0, 1.1fr) minmax(0, 2.8fr) 24px;
+  border-radius: 0;
+  padding: 16px 8px;
+}
+.expenses-page .expense-day.is-selected > .expense-day-toggle {
+  background: var(--color-complete-soft);
+}
+@media (max-width: 600px) {
+  .expenses-page .expense-day-toggle {
+    padding: 16px 8px;
+  }
+}
+
+.expense-days-table {
+  table-layout: fixed;
+}
+.expense-days-table th:first-child {
+  width: 38%;
+}
+.expense-days-table th:not(:first-child) {
+  width: 20.66%;
+}
+.expense-days-table td {
+  font-size: var(--text-supporting);
+  font-variant-numeric: tabular-nums;
+}
+.expense-days-table tbody td {
+  font-family: var(--font-money);
+  font-weight: 600;
+}
+.expense-table-date {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.expense-table-date:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.expense-table-date .expense-day-date {
+  flex: 1;
+}
+.expense-day-chevron {
+  flex: 0 0 auto;
+  transition: transform 150ms ease-out;
+}
+.expense-day-chevron.is-open {
+  transform: rotate(180deg);
+}
+.expense-days-table .expense-details-row > td {
+  padding: 0 8px 16px;
+}
+.expense-details-row .expense-day-body {
+  padding: 16px 8px;
+  font-family: var(--font-body);
+}
+.expense-days-table tr.is-no-class > th,
+.expense-days-table tr.is-no-class > td {
+  color: var(--color-muted);
+}
+@media (max-width: 700px) {
+  .expense-days-table th:first-child {
+    width: 42%;
+  }
+  .expense-days-table th:not(:first-child) {
+    width: 19.33%;
+  }
+  .expense-days-table th,
+  .expense-days-table td {
+    padding-inline: 4px;
+  }
+  .expense-table-date {
+    gap: 6px;
+  }
+  .expense-day-status {
+    display: none;
+  }
+}
+.expense-table-date .expense-day-status {
+  box-sizing: border-box;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--color-bg);
+}
+.expense-table-date .expense-day-status.is-started {
+  background: var(--color-complete-soft);
+  color: var(--color-complete);
+  border-color: var(--color-complete);
+}
+.expense-table-date {
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .expense-table-date .expense-day-status {
+    display: grid;
+  }
+  .expense-table-date {
+    gap: 8px;
+  }
+}
+/* Keep the period menu beside its selector, following the title's chevron. */
+.expense-period-toolbar .period-selector {
+  flex: 0 1 auto;
+}
+.expense-period-toolbar > details.action-menu {
+  margin-inline-start: 0;
+  align-self: center;
+}
+.expense-period-toolbar > details.action-menu {
+  margin-inline-start: auto;
+}
+.expense-period-toolbar {
+  position: relative;
+}
+.expense-period-toolbar > details.action-menu {
+  position: absolute;
+  inset-inline-start: 50%;
+  margin-inline-start: 0;
+  transform: translateX(-50%);
+}
+.expense-period-toolbar {
+  position: static;
+}
+.expense-period-toolbar > details.action-menu {
+  position: relative;
+  inset-inline-start: auto;
+  transform: none;
+  margin-inline-start: auto;
+}
+.expense-period-toolbar > details.action-menu {
+  transform: translateY(-12px);
+}
+@media (hover: hover) {
+  .expense-period-toolbar
+    .period-selector-header
+    .select-trigger:not(:disabled):hover {
+    background: var(--color-hover);
+    border-radius: var(--radius-control);
+  }
+}
+.expense-period-toolbar .period-selector-header .select-trigger {
+  min-height: 36px;
+  padding: 2px 6px;
+  gap: 4px;
+}
+.savings-page
+  .savings-checklist-toolbar
+  .period-selector-header
+  .select-trigger {
+  min-height: 36px;
+  padding: 2px 6px;
+  gap: 4px;
+}
+@media (hover: hover) {
+  .savings-page
+    .savings-checklist-toolbar
+    .period-selector-header
+    .select-trigger:not(:disabled):hover {
+    background: var(--color-hover);
+    border-radius: var(--radius-control);
+  }
+}
+
+.expense-days-table .expense-remaining-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.expense-days-table .expense-day-chevron {
+  color: var(--color-ink);
+}
+.expense-table-date {
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .expense-table-date {
+    gap: 12px;
+  }
+}
+.expense-table-date {
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .expense-table-date {
+    gap: 16px;
+  }
+}
+
+.expense-days-table tbody tr:not(.expense-details-row) {
+  cursor: pointer;
+}
+.expenses-heading .today-label {
+  margin-inline-start: auto;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border-radius: var(--radius-control);
+  font-size: var(--text-supporting);
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .expenses-heading .today-label {
+    margin-inline-start: 0;
+  }
+}
+.expenses-heading .header-controls {
+  display: contents;
+}
+@media (max-width: 760px) {
+  .expenses-heading .today-label {
+    padding: 0;
+    background: transparent;
+    margin-inline-start: 0;
+  }
+}
+
+.expenses-heading .today-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .expenses-heading .today-label {
+    padding: 0;
+    background: transparent;
+  }
+}
+/* Show column labels consistently on the Savings and Expenses tables. */
+.savings-page .savings-days-table thead,
+.expenses-page .expense-days-table thead {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border: 0;
+  display: table-header-group;
+}
+.savings-page .savings-days-table thead th,
+.expenses-page .expense-days-table thead th {
+  padding-block: 16px;
+  color: var(--color-muted);
+  font-size: var(--text-supporting);
+  font-weight: 400;
+  text-align: start;
+  border-block-end: 1px solid var(--color-line);
+}
+.expense-period-toolbar { margin-block-end: 0; }
+.savings-checklist-toolbar { margin-block-end: 8px; }
+.savings-page .savings-days-table thead th,
+.expenses-page .expense-days-table thead th {
+  padding-block: 8px;
+}
+/* Match the allowance checklist's breathing room before its column labels. */
+.expense-period-toolbar { margin-block-end: 16px; }
+.savings-checklist-toolbar { margin-block-end: 16px; }
+.savings-page .savings-days-table thead th,
+.expenses-page .expense-days-table thead th {
+  padding-block: 8px;
+  font-size: var(--text-caption);
+}
+.expense-period-toolbar {
+  min-height: 40px;
+  margin-block-end: 0;
+}
+.savings-checklist-toolbar { margin-block-end: 0; }
+/* Compact table density to show more daily records at once. */
+.savings-page .savings-checklist-card,
+.expenses-page .expense-day-list {
+  padding: 16px;
+}
+.savings-days-table th,
+.savings-days-table td,
+.expense-days-table th,
+.expense-days-table td {
+  padding-block: 8px;
+  padding-inline: 8px;
+}
+.savings-days-table .day-check,
+.expense-table-date {
+  min-height: 40px;
+}
+.expense-days-table .expense-details-row > td {
+  padding-block: 0 8px;
+}
+@media (max-width: 600px) {
+  .savings-page .savings-checklist-card,
+  .expenses-page .expense-day-list {
+    padding: 12px;
+  }
+  .savings-days-table th,
+  .savings-days-table td,
+  .expense-days-table th,
+  .expense-days-table td {
+    padding-inline: 4px;
+  }
+}
+.savings-page .savings-checklist-toolbar .period-selector-header {
+  margin-block-end: 0 !important;
+}
+.savings-page .savings-checklist-toolbar {
+  margin-block-end: -8px;
+}
+.expenses-page .expense-period-toolbar { margin-block-end: -8px; }
+.expenses-page .expense-days-table thead th { padding-block: 4px; }
+.savings-page .savings-days-table thead th { padding-block: 4px; }
+.expenses-page .expenses-heading .header-action-slot .expanding-action {
+  position: relative;
+  inline-size: 48px;
+  min-inline-size: 48px;
+  max-inline-size: 48px;
+  padding: 0;
+  overflow: visible;
+  clip-path: none;
+  justify-content: center;
+  border-radius: 50%;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action > svg {
+  position: static;
+  inset: auto;
+  transform: none;
+  flex: 0 0 auto;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action .expanding-action-label {
+  display: none;
+}
+/* Restore the expanding Record expense action while keeping its fixed anchor. */
+.expenses-page .expenses-heading .header-action-slot {
+  width: 176px;
+  flex: 0 0 176px;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action {
+  inline-size: 176px;
+  min-inline-size: 176px;
+  max-inline-size: 176px;
+  justify-content: flex-start;
+  padding-inline: 8px;
+  overflow: hidden;
+  clip-path: inset(0 0 0 calc(100% - 48px) round 24px);
+  transition: clip-path 150ms ease-out;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action > svg {
+  position: absolute;
+  inset-inline-end: 15px;
+  inset-inline-start: auto;
+  transform: none;
+}
+.expenses-page .expenses-heading .expanding-action-label {
+  display: block;
+  margin-inline-end: 44px;
+  opacity: 0;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .expenses-page .expenses-heading .header-action-slot .expanding-action:not(:disabled):hover {
+    clip-path: inset(0 round 24px);
+  }
+  .expenses-page .expenses-heading .expanding-action:not(:disabled):hover .expanding-action-label {
+    opacity: 1;
+  }
+}
+.expenses-page .expenses-heading .header-action-slot:has(.expanding-action:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action:focus-visible {
+  clip-path: inset(0 round 24px);
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action:focus-visible .expanding-action-label {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .expenses-page .expenses-heading .header-action-slot .expanding-action {
+    transition: none;
+  }
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action {
+  border-radius: 24px;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action .expanding-action-label {
+  display: block;
+  max-width: none;
+}
+.expenses-page .expenses-heading .header-action-slot .expanding-action:not(:disabled):hover .expanding-action-label,
+.expenses-page .expenses-heading .header-action-slot .expanding-action:focus-visible .expanding-action-label {
+  display: block;
+  opacity: 1;
+}
+.savings-page .savings-sliding-actions {
+  position: fixed;
+  inset-inline-end: max(24px, env(safe-area-inset-right));
+  inset-block-end: max(24px, env(safe-area-inset-bottom));
+  z-index: 30;
+}
+
+/* Keep Add allowance available in the same floating position as Record expense. */
+.allowance-page-heading .header-action-slot {
+  position: fixed;
+  inset-inline-end: max(24px, env(safe-area-inset-right));
+  inset-block-end: max(24px, env(safe-area-inset-bottom));
+  z-index: 30;
+  flex: 0 0 176px;
+  width: 176px;
+  margin: 0;
+}
+.allowance-page-heading .header-action-slot .expanding-action {
+  inline-size: 176px;
+  min-inline-size: 176px;
+  max-inline-size: 176px;
+  justify-content: flex-start;
+  padding-inline: 8px;
+  overflow: hidden;
+  clip-path: inset(0 0 0 calc(100% - 48px) round 24px);
+  transition: clip-path 150ms ease-out;
+  box-shadow: 0 4px 14px #40353524;
+}
+.allowance-page-heading .header-action-slot .expanding-action > svg {
+  position: absolute;
+  inset-inline-end: 15px;
+  inset-inline-start: auto;
+  transform: none;
+}
+.allowance-page-heading .expanding-action-label {
+  display: block;
+  max-width: none;
+  margin-inline-end: 44px;
+  opacity: 0;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .allowance-page-heading .header-action-slot .expanding-action:not(:disabled):hover {
+    clip-path: inset(0 round 24px);
+  }
+  .allowance-page-heading .expanding-action:not(:disabled):hover .expanding-action-label {
+    opacity: 1;
+  }
+}
+.allowance-page-heading .header-action-slot:has(.expanding-action:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+.allowance-page-heading .header-action-slot .expanding-action:focus-visible {
+  clip-path: inset(0 round 24px);
+}
+.allowance-page-heading .expanding-action:focus-visible .expanding-action-label {
+  opacity: 1;
+}
+@media (max-width: 600px) {
+  .allowance-page-heading .header-action-slot {
+    inset-inline-end: max(16px, env(safe-area-inset-right));
+    inset-block-end: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .allowance-page-heading .header-action-slot .expanding-action {
+    transition: none;
+  }
+}
+@media (max-width: 600px) {
+  .savings-page .savings-sliding-actions {
+    inset-inline-end: max(16px, env(safe-area-inset-right));
+    inset-block-end: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Center the plus in each collapsed floating action, independent of its pill width. */
+.expenses-page .expenses-heading .header-action-slot .expanding-action > svg,
+.allowance-page-heading .header-action-slot .expanding-action > svg,
+.savings-slide-main > svg {
+  inset-inline-start: calc(100% - 24px);
+  inset-inline-end: auto;
+  transform: translateX(-50%);
+}
+.savings-sliding-actions.is-open .savings-slide-main > svg {
+  inset-inline-start: 15px;
+  transform: none;
 }

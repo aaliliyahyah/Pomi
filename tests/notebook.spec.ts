@@ -51,8 +51,8 @@ test("records, corrects, backs up, restores, and opens offline", async ({
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Expense records", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await chooseOption(
@@ -97,8 +97,11 @@ test("records, corrects, backs up, restores, and opens offline", async ({
     .fill("75");
   await page.getByRole("button", { name: "Save entry", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  page.once("dialog", (dialog) => dialog.accept());
   await menuAction(page, "Delete Weekly allowance");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Delete record", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Delete Weekly allowance", exact: true }),
   ).not.toBeVisible();
@@ -121,8 +124,8 @@ test("records, corrects, backs up, restores, and opens offline", async ({
   await download.saveAs(backupPath);
   await page.getByRole("link", { name: "Home", exact: true }).click();
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Expense records", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await saveEntry(page, "10", "After backup");
@@ -144,8 +147,8 @@ test("records, corrects, backs up, restores, and opens offline", async ({
   await page.reload();
   await expect(page.locator(".hero-balance").first()).toHaveText("₱775.00");
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Expense records", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await saveEntry(page, "5", "Offline snack");
@@ -161,8 +164,8 @@ test("warns about negative allowance, blocks excessive withdrawals, validates ba
 }) => {
   await setup(page);
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Expense records", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await page
@@ -215,7 +218,6 @@ test("creates goals, archives funds, edits starting balances and fits mobile scr
   await page.getByRole("link", { name: "Savings", exact: true }).click();
   await page.getByRole("button", { name: "New fund", exact: true }).click();
   await page.getByLabel("Fund name", { exact: true }).fill("New phone");
-  await page.getByText("Additional details", { exact: true }).click();
   await page.getByLabel("Goal amount").fill("1000");
   await page.getByLabel("Daily savings amount").fill("50");
   await page
@@ -234,13 +236,21 @@ test("creates goals, archives funds, edits starting balances and fits mobile scr
     .getByRole("button", { name: "Archive fund", exact: true })
     .click();
   await expect(phone).not.toBeVisible();
-  await page.getByLabel("Show archived").check();
-  await expect(phone).toBeVisible();
-  await expect(page.locator(".savings-overview strong")).toHaveText("₱350.00");
-  await phone.locator("summary").click();
-  await phone
-    .getByRole("button", { name: "Restore fund", exact: true })
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  const archived = page.getByRole("region", {
+    name: "Archived funds",
+    exact: true,
+  });
+  await expect(archived).toContainText("₱250.00");
+  await archived
+    .getByRole("button", {
+      name: "Restore fund New phone from archives",
+      exact: true,
+    })
     .click();
+  await page.getByRole("link", { name: "Savings", exact: true }).click();
+  await expect(phone).toBeVisible();
+  await expect(page.locator(".savings-total strong")).toHaveText("₱350.00");
   await page.getByRole("link", { name: "History", exact: true }).click();
   await chooseOption(
     page.getByRole("combobox", { name: "Fund", exact: true }),

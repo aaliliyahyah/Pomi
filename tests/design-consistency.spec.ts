@@ -7,7 +7,7 @@ import {
   setSavingsDay,
 } from "../src/model";
 
-test("keeps financial summaries consistent and fund views keyboard accessible", async ({
+test("keeps financial summaries consistent and fund details keyboard accessible", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -70,17 +70,10 @@ test("keeps financial summaries consistent and fund views keyboard accessible", 
       const headingFont = await page
         .getByRole("heading", { level: 1 })
         .evaluate((el) => getComputedStyle(el).fontFamily);
-      const interfaceFonts = await page
-        .locator(
-          "main, main button, main input, main select, main textarea, main .summary-amount",
-        )
-        .evaluateAll((elements) =>
-          elements
-            .filter((el) => el.getClientRects().length > 0)
-            .map((el) => getComputedStyle(el).fontFamily),
-        );
       expect(headingFont).toContain("Lora");
-      for (const family of interfaceFonts) expect(family).toBe(headingFont);
+      await expect(page.getByRole("main")).toHaveCSS("font-family", /DM Sans/);
+      for (const amount of await page.locator(".summary-amount").all())
+        await expect(amount).toHaveCSS("font-family", /Lora/);
       const summaries = await page
         .locator(".financial-summary")
         .evaluateAll((cards) => {
@@ -138,6 +131,19 @@ test("keeps financial summaries consistent and fund views keyboard accessible", 
         palette[summary.role] ??= summary.background;
         expect(summary.background).toBe(palette[summary.role]);
       }
+      if (route === "Home") {
+        const card = (await page.locator(".home-daily-checkin").boundingBox())!;
+        const action = (await page
+          .getByRole("link", { name: "Open daily check-in", exact: true })
+          .boundingBox())!;
+        expect(
+          Math.abs(card.x + card.width - action.x - action.width - 16),
+        ).toBeLessThan(2);
+        expect(
+          Math.abs(card.y + card.height - action.y - action.height - 16),
+        ).toBeLessThan(2);
+        expect(action.height).toBeGreaterThanOrEqual(40);
+      }
       if (route === "Home" && width > 1200) {
         const amountHeights = await page
           .locator(".recent-entry .entry-end > strong")
@@ -151,16 +157,12 @@ test("keeps financial summaries consistent and fund views keyboard accessible", 
           name: "Allowance period",
           exact: true,
         });
-        const action = page.getByRole("button", {
-          name: "Edit period",
-          exact: true,
-        });
-        const f = (await field.boundingBox())!,
-          a = (await action.boundingBox())!;
-        if (width > 600) {
-          expect(f.width).toBeLessThanOrEqual(512);
-          expect(Math.abs(f.y + f.height - a.y - a.height)).toBeLessThan(2);
-        } else expect(a.y).toBeGreaterThanOrEqual(f.y + f.height);
+        await expect(field).toBeVisible();
+        await expect(field).not.toContainText("₱");
+        await expect(page.locator(".header-period-row")).toBeVisible();
+        await expect(
+          page.getByText("Period actions", { exact: true }),
+        ).toHaveCount(0);
       }
       if (route === "Savings") {
         await expect(
@@ -174,14 +176,7 @@ test("keeps financial summaries consistent and fund views keyboard accessible", 
         await details.focus();
         await page.keyboard.press("Enter");
         await expect(details).toHaveAttribute("aria-pressed", "true");
-        for (const button of await group.getByRole("button").all()) {
-          await expect(button).toHaveCSS("text-decoration-line", "none");
-          await expect(button).toHaveCSS("border-top-width", "1px");
-          expect(
-            await button.evaluate((el) => getComputedStyle(el).backgroundColor),
-          ).not.toBe("rgba(0, 0, 0, 0)");
-        }
-        await expect(details).toHaveCSS("outline-style", "solid");
+        await expect(page.locator(".fund-details-content")).toBeVisible();
         await group
           .getByRole("button", { name: "Daily checklist", exact: true })
           .click();

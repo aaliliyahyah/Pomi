@@ -5,7 +5,7 @@ async function checkLoraGlyphs(page: Page) {
     const sample = document.createElement("div");
     sample.id = "font-proof";
     // Prove the font renders the peso sign, minus sign, punctuation, and digits
-    // at every UI weight, using Lora plus the bundled peso-only fallback.
+    // at every UI weight, using Lora and the peso-only fallback.
     for (const weight of [400, 500, 600, 700]) {
       const line = document.createElement("span");
       line.id = `font-proof-${weight}`;
@@ -16,7 +16,7 @@ async function checkLoraGlyphs(page: Page) {
     document.body.append(sample);
     await Promise.all(
       [400, 500, 600, 700].flatMap((weight) => [
-        document.fonts.load(`${weight} 16px Lora`, sample.textContent!),
+        document.fonts.load(`${weight} 16px "Lora"`, sample.textContent!),
         document.fonts.load(`${weight} 16px "Noto Serif Peso"`, "₱"),
       ]),
     );
@@ -47,7 +47,7 @@ async function checkLoraGlyphs(page: Page) {
   const digitWidths = await page.evaluate(() => {
     const probe = document.createElement("span");
     probe.style.cssText =
-      "display:inline-block;font:700 32px Lora;font-variant-numeric:tabular-nums";
+      "display:inline-block;font:700 32px var(--serif);font-variant-numeric:tabular-nums";
     document.body.append(probe);
     const widths = ["111111", "888888"].map((text) => {
       probe.textContent = text;
@@ -60,7 +60,7 @@ async function checkLoraGlyphs(page: Page) {
   expect(digitWidths[0]).toBeCloseTo(digitWidths[1], 1);
 }
 
-test("renders bundled Lora glyphs and weights online and after an offline reload", async ({
+test("renders bundled Lora financial glyphs and weights online and after an offline reload", async ({
   page,
   context,
 }) => {
@@ -71,7 +71,7 @@ test("renders bundled Lora glyphs and weights online and after an offline reload
       externalRequests.push(request.url());
   });
   page.on("response", (response) => {
-    if (response.url().endsWith(".woff2"))
+    if (/\.(woff2|ttf)$/.test(response.url()))
       fontResponses.push({
         url: response.url(),
         serviceWorker: response.fromServiceWorker(),
@@ -80,6 +80,7 @@ test("renders bundled Lora glyphs and weights online and after an offline reload
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await checkLoraGlyphs(page);
+  await expect(page.locator(".brand")).toHaveCSS("font-family", /Lora/);
   await page.evaluate(() => navigator.serviceWorker.ready);
   // The prompt-style service worker takes control on the next navigation.
   await page.reload();
@@ -88,6 +89,7 @@ test("renders bundled Lora glyphs and weights online and after an offline reload
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
   const fontPaths = [
+    "/fonts/dm-sans/dm-sans-variable.ttf",
     "/fonts/lora/lora-latin-wght.woff2",
     "/fonts/lora/lora-latin-ext-wght.woff2",
     "/fonts/noto-serif-peso/noto-serif-peso-wght.woff2",

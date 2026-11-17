@@ -42,7 +42,6 @@ test("tracks a daily budget and confirms overspending without losing cancelled i
   ).toHaveCount(0);
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Selected day expenses", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await expect(
@@ -62,7 +61,7 @@ test("tracks a daily budget and confirms overspending without losing cancelled i
   await expect(page.getByTestId("expenses-total")).toHaveText("₱25.00");
   await expect(page.getByTestId("expenses-remaining")).toHaveText("₱925.00");
   await expect(page.getByTestId("daily-remaining")).toHaveText("₱125.00");
-  await expect(page.locator(".daily-budget-breakdown > span")).toHaveCount(4);
+  await expect(page.locator(".daily-budget-breakdown > span")).toHaveCount(2);
   await expect(
     page.getByRole("region", { name: "Total spent", exact: true }),
   ).not.toContainText("All time");
@@ -75,7 +74,6 @@ test("tracks a daily budget and confirms overspending without losing cancelled i
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
   await selectExpenseDay(page, 2);
   await page
-    .getByRole("region", { name: "Selected day expenses", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await expect(
@@ -224,7 +222,7 @@ test("restores historical checked days without changing balances and starts new 
     0,
   );
   await expect(day1.locator(".day-spent")).toHaveCount(0);
-  await page.getByRole("button", { name: "Edit period", exact: true }).click();
+  await menuAction(page, "Edit period");
   await expect(page.getByRole("dialog")).toContainText("Dates were inferred");
   await page.keyboard.press("Escape");
   const day2 = page.getByRole("region", { name: "Day 2", exact: true });

@@ -22,16 +22,42 @@ export function ActionMenu({
   className = "",
   trigger,
   floating = false,
+  openOnHover = false,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   trigger?: ReactNode;
   floating?: boolean;
+  openOnHover?: boolean;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const openedByHover = useRef(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  function cancelHoverClose() {
+    clearTimeout(hoverTimer.current);
+  }
+  function hoverEnter(event: React.PointerEvent) {
+    cancelHoverClose();
+    if (openOnHover && event.pointerType === "mouse" && ref.current) {
+      openedByHover.current = !ref.current.open;
+      ref.current.open = true;
+    }
+  }
+  function hoverLeave() {
+    if (!openOnHover) return;
+    cancelHoverClose();
+    hoverTimer.current = setTimeout(() => {
+      if (ref.current && !ref.current.contains(document.activeElement))
+        ref.current.open = false;
+    }, 180);
+  }
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
   function position() {
     if (!floating || !ref.current || !panelRef.current) return;
     const panel = panelRef.current;
@@ -88,17 +114,29 @@ export function ActionMenu({
   return (
     <details
       ref={ref}
+      onPointerEnter={hoverEnter}
+      onPointerLeave={hoverLeave}
       className={`action-menu ${className}`}
       onToggle={(event) => {
         if (event.target === event.currentTarget) position();
       }}
     >
-      <summary aria-label={label} aria-controls={panelId}>
+      <summary
+        aria-label={label}
+        aria-controls={panelId}
+        onClick={(event) => {
+          if (openOnHover && openedByHover.current && ref.current?.open)
+            event.preventDefault();
+          openedByHover.current = false;
+        }}
+      >
         {trigger ?? <MoreHorizontal size={20} aria-hidden="true" />}
       </summary>
       <div
         id={panelId}
         ref={panelRef}
+        onPointerEnter={cancelHoverClose}
+        onPointerLeave={hoverLeave}
         popover={floating ? "manual" : undefined}
         className="action-popover"
         onClick={(event) => {

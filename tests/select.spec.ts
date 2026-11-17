@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { chooseOption } from "./helpers";
+import { chooseOption, menuAction } from "./helpers";
 
 test("supports keyboard selection, cancellation, typeahead, and dialog focus", async ({
   page,
 }) => {
   await page.goto("/#savings");
-  await page.getByRole("button", { name: "New fund", exact: true }).click();
+  await menuAction(page, "New fund");
   const frequency = page.getByRole("combobox", { name: "Saving frequency" });
   await expect(frequency).toHaveCSS("border-top-width", "0px");
   await frequency.focus();
@@ -31,7 +31,7 @@ test("supports keyboard selection, cancellation, typeahead, and dialog focus", a
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
-    page.getByRole("button", { name: "New fund", exact: true }),
+    page.getByLabel("Savings add options", { exact: true }),
   ).toBeFocused();
 });
 
@@ -60,13 +60,14 @@ test("switches the inline fund checklist, retains selection, and replaces filter
   page,
 }) => {
   await page.goto("/#savings");
-  await page.getByRole("button", { name: "New fund", exact: true }).click();
+  await menuAction(page, "New fund");
   await page.getByLabel("Fund name", { exact: true }).fill("Emergency savings");
   await chooseOption(page.getByLabel("Saving frequency"), "flexible");
   await page.getByRole("button", { name: "Create fund", exact: true }).click();
-  await page
-    .getByRole("button", { name: "View checklist for Emergency savings" })
-    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "Emergency savings",
+  });
   await expect(page.locator("#fund-checklist-heading")).toHaveText(
     "Emergency savings",
   );
@@ -78,21 +79,19 @@ test("switches the inline fund checklist, retains selection, and replaces filter
   await expect(page.locator("#fund-checklist-heading")).toHaveText(
     "Emergency savings",
   );
-  const fund = page
-    .getByRole("article")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Emergency savings",
-        exact: true,
-      }),
-    });
-  await fund.locator("summary").click();
-  await fund.getByRole("button", { name: "Archive fund", exact: true }).click();
+  await menuAction(page, "Archive fund");
   await expect(page.locator("#fund-checklist-heading")).toHaveText(
     "My savings",
   );
-  await page.getByLabel("Show archived").check();
-  await expect(page.locator("#fund-checklist-heading")).toHaveText(
-    "My savings",
-  );
+  await expect(page.getByLabel("Show archived")).toHaveCount(0);
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Archived funds", exact: true }),
+  ).toContainText("Emergency savings");
+  await page.getByRole("link", { name: "Savings", exact: true }).click();
+  await menuAction(page, "Archive fund");
+  await expect(
+    page.getByRole("combobox", { name: "Savings fund" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 });

@@ -30,14 +30,21 @@ test("opens Expenses directly and restores the recording action's keyboard focus
     name: "Expense records",
     exact: true,
   });
-  const record = records.getByRole("button", {
+  const record = page.getByRole("button", {
     name: "Record expense",
     exact: true,
   });
   await expect(record).toHaveCount(1);
-  await expect(page.getByRole("group", { name: "Expense view" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("button", { name: "All expenses", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", { name: "Daily expenses", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "No daily allowance yet" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await expect(records).toBeVisible();
   await record.focus();
   await page.keyboard.press("Enter");
@@ -103,7 +110,7 @@ test("tracks actual daily expenses, edits and deletes without counting savings",
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
   await expect(page.getByTestId("expenses-total")).toHaveText("₱0.00");
   await expect(page.getByTestId("expenses-remaining")).toHaveText("₱950.00");
-  await expect(page.locator(".daily-budget-breakdown > span")).toHaveCount(4);
+  await expect(page.locator(".daily-budget-breakdown > span")).toHaveCount(2);
   const toggle = page.locator(".expense-day.is-selected .expense-day-toggle");
   await toggle.focus();
   await page.keyboard.press("Enter");
@@ -131,12 +138,9 @@ test("tracks actual daily expenses, edits and deletes without counting savings",
   ).toHaveCount(0);
   await expect(page.locator(".expenses-panel .entry-row")).toHaveCount(0);
   await expect(
-    page
-      .getByRole("region", { name: "Selected day expenses", exact: true })
-      .getByRole("button", { name: "Record expense", exact: true }),
+    page.getByRole("button", { name: "Record expense", exact: true }),
   ).toHaveCount(1);
   await page
-    .getByRole("region", { name: "Selected day expenses", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await expect(
@@ -161,7 +165,7 @@ test("tracks actual daily expenses, edits and deletes without counting savings",
   await page.getByRole("button", { name: "Dismiss notification" }).click();
   await expect(page.locator(".save-message")).toHaveText("");
   const records = page.getByRole("region", {
-    name: "Expense records",
+    name: "Selected day expenses",
     exact: true,
   });
   await menuAction(records, "Edit Afternoon snack");
@@ -173,11 +177,17 @@ test("tracks actual daily expenses, edits and deletes without counting savings",
   await expect(page.getByTestId("expenses-total")).toHaveText("₱20.00");
   await page.reload();
   await expect(page.getByTestId("expenses-total")).toHaveText("₱20.00");
-  page.once("dialog", (dialog) => dialog.dismiss());
   await menuAction(records, "Delete Afternoon snack");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
   await expect(page.getByTestId("expenses-total")).toHaveText("₱20.00");
-  page.once("dialog", (dialog) => dialog.accept());
   await menuAction(records, "Delete Afternoon snack");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Delete record", exact: true })
+    .click();
   await expect(page.getByTestId("expenses-total")).toHaveText("₱0.00");
   await expect(page.getByTestId("daily-remaining")).toHaveText("₱150.00");
   await page.getByRole("link", { name: "Allowance", exact: true }).click();
@@ -256,18 +266,24 @@ test("separates selected-day assignments from all-time expenses and preserves sc
     .locator(".entry-row");
   const dailyRows = page.locator(".expense-day-records .entry-row");
   await expect(page.getByTestId("expenses-total")).toHaveText("₱275.00");
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(0);
   await expect(dailyRows).toHaveCount(1);
   await selectExpenseDay(page, 1);
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(0);
   await expect(dailyRows).toHaveCount(1);
   await expect(dailyRows).toContainText("Lunch");
   await expect(page.getByTestId("daily-remaining")).toHaveText("₱125.00");
+  await expect(page.getByTestId("daily-remaining-summary")).toHaveText(
+    "₱125.00",
+  );
   await selectExpenseDay(page, 2);
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(0);
   await expect(dailyRows).toHaveCount(1);
   await expect(dailyRows).toContainText("Backdated supplies");
   await expect(page.getByTestId("daily-remaining")).toHaveText("-₱40.00");
+  await expect(page.getByTestId("daily-remaining-summary")).toHaveText(
+    "-₱40.00",
+  );
   await expect(page.getByText(/spent on selected day/)).toHaveCount(0);
   await expect(page.locator(".expense-day-note")).toHaveCount(0);
   await expect(page.getByTestId("daily-remaining")).toHaveClass(/over-budget/);
@@ -276,7 +292,6 @@ test("separates selected-day assignments from all-time expenses and preserves sc
   ).toHaveCount(0);
   await expect(page.getByTestId("expenses-total")).toHaveText("₱275.00");
   await page
-    .getByRole("region", { name: "Selected day expenses", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await expect(
@@ -298,7 +313,85 @@ test("separates selected-day assignments from all-time expenses and preserves sc
   await selectExpenseDay(page, 3);
   await expect(page.getByTestId("daily-remaining")).toHaveText("—");
   await expect(page.locator(".expense-day-records")).toContainText("No class");
+  await expect(rows).toHaveCount(0);
+  await expect(dailyRows).toHaveCount(0);
+  await page.getByRole("button", { name: "All expenses", exact: true }).click();
   await expect(rows).toHaveCount(3);
   await expect(dailyRows).toHaveCount(0);
   await expect(rows.filter({ hasText: "Unassigned snack" })).toBeVisible();
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "All expenses", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", { name: "Daily expenses", exact: true })
+    .click();
+  await expect(page.locator(".expense-day-toggle").nth(2)).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(page.getByTestId("daily-remaining-summary")).toHaveText("—");
 });
+
+for (const width of [1440, 320]) {
+  test(`keeps a failed deletion recoverable at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/#expenses");
+    await page
+      .getByRole("button", { name: "Record expense", exact: true })
+      .click();
+    const editor = page.getByRole("dialog", { name: "Expense", exact: true });
+    await editor
+      .getByRole("spinbutton", { name: "Amount", exact: true })
+      .fill("10");
+    await editor.getByLabel("Note").fill("Retry snack");
+    await editor
+      .getByRole("button", { name: "Save entry", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Record over budget?" })
+      .getByRole("button", { name: "Record anyway" })
+      .click();
+    await expect(editor).not.toBeVisible();
+    await page.evaluate(() => {
+      const original = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (
+        ...args: Parameters<typeof original>
+      ) {
+        if (this.name === "notebooks") {
+          IDBObjectStore.prototype.put = original;
+          throw new Error("Unable to delete this record.");
+        }
+        return original.apply(this, args);
+      };
+    });
+    await menuAction(page, "Delete Retry snack");
+    const dialog = page.getByRole("dialog", { name: "Delete record?" });
+    await expect(
+      dialog.getByRole("button", { name: "Cancel", exact: true }),
+    ).toBeFocused();
+    const remove = dialog.getByRole("button", {
+      name: "Delete record",
+      exact: true,
+    });
+    await remove.click();
+    await expect(dialog.getByRole("alert")).toHaveText(
+      "Unable to delete this record. Try again.",
+    );
+    await expect(page.getByTestId("expenses-total")).toHaveText("₱10.00");
+    await expect(remove).toBeEnabled();
+    await page.screenshot({
+      path: test.info().outputPath(`delete-error-${width}.png`),
+      fullPage: true,
+    });
+    await remove.click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByTestId("expenses-total")).toHaveText("₱0.00");
+    await expect(
+      page.getByRole("heading", { name: "No expenses yet" }),
+    ).toBeVisible();
+  });
+}

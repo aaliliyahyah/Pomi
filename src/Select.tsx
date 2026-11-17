@@ -13,7 +13,11 @@ import { Check, ChevronDown } from "lucide-react";
 type SelectProps = Omit<
   SelectHTMLAttributes<HTMLSelectElement>,
   "multiple" | "size" | "value" | "defaultValue"
-> & { value?: string; defaultValue?: string };
+> & {
+  value?: string;
+  defaultValue?: string;
+  renderLabel?: (value: string, label: ReactNode) => ReactNode;
+};
 
 type Option = { value: string; label: ReactNode; disabled?: boolean };
 function words(node: ReactNode): string {
@@ -34,6 +38,7 @@ export function Select({
   defaultValue,
   onChange,
   onInvalid,
+  renderLabel,
   ...props
 }: SelectProps) {
   const generated = useId();
@@ -257,7 +262,12 @@ export function Select({
           }
         }}
       >
-        <span>{options[selectedIndex]?.label ?? "Choose an option"}</span>
+        <span>
+          {options[selectedIndex]
+            ? (renderLabel?.(selected, options[selectedIndex].label) ??
+              options[selectedIndex].label)
+            : "Choose an option"}
+        </span>
         <ChevronDown size={18} aria-hidden="true" />
       </button>
       <div
@@ -282,7 +292,9 @@ export function Select({
             }}
             onClick={() => choose(index)}
           >
-            <span>{option.label}</span>
+            <span>
+              {renderLabel?.(option.value, option.label) ?? option.label}
+            </span>
             {option.value === selected && (
               <Check size={16} aria-hidden="true" />
             )}

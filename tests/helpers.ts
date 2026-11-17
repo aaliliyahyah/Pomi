@@ -11,12 +11,23 @@ export async function openAllowanceForm(page: Page) {
 
 export async function menuAction(scope: Page | Locator, name: string) {
   const page = "page" in scope ? scope.page() : scope;
+  if (
+    (name === "New fund" || name === "Add Savings") &&
+    (await page.locator(".savings-slide-main").count())
+  ) {
+    await page.locator(".savings-slide-main").focus();
+    await page.getByRole("button", { name, exact: true }).click();
+    return;
+  }
   const button = page.getByRole("button", {
     name,
     exact: true,
     includeHidden: true,
   });
-  const menu = scope.locator("details.action-menu").filter({ has: button });
+  const menu = scope
+    .locator("details.action-menu")
+    .filter({ has: button })
+    .first();
   await menu.locator("summary").click();
   await menu.getByRole("button", { name, exact: true }).click();
 }

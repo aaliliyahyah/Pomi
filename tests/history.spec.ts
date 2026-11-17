@@ -210,11 +210,17 @@ test("browses grouped history, filters and totals while preserving edits and wit
   await expect(page.locator(".history-summary strong").nth(1)).toHaveText(
     "₱230.00",
   );
-  page.once("dialog", (dialog) => dialog.dismiss());
   await menuAction(page, "Delete School supplies");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
   await expect(rows).toHaveCount(8);
-  page.once("dialog", (dialog) => dialog.accept());
   await menuAction(page, "Delete School supplies");
+  await page
+    .getByRole("dialog", { name: "Delete record?" })
+    .getByRole("button", { name: "Delete record", exact: true })
+    .click();
   await expect(rows).toHaveCount(7);
   await expect(page.locator("#history-transactions-title")).toBeFocused();
   await expect(page.locator(".history-summary strong").nth(1)).toHaveText(

@@ -1,4 +1,4 @@
-import { chooseOption } from "./helpers";
+import { chooseOption, menuAction } from "./helpers";
 import { expect, test } from "@playwright/test";
 import {
   emptyNotebook,
@@ -79,15 +79,16 @@ test("shows compact funds, optional goals and actionable daily states without ch
   await page.getByRole("button", { name: "Replace and restore" }).click();
   await page.getByRole("link", { name: "Savings", exact: true }).click();
   await expect(page.locator(".savings-total strong")).toHaveText("₱350.00");
-  await expect(page.locator(".savings-funds .fund-card")).toHaveCount(3);
-  await expect(page.locator(".savings-funds progress")).toHaveCount(2);
-  const panel = page.locator("#fund-checklist-panel");
+  await expect(
+    page.locator(".savings-fund-selector select option"),
+  ).toHaveCount(3);
+  const panel = page.locator('[data-testid="selected-fund-panel"]');
   await expect(page.locator(".fund-checklist-hint")).toHaveCount(0);
   await expect(panel.getByRole("progressbar")).toHaveAttribute("value", "5000");
-  const day1 = panel.getByRole("region", { name: "Day 1", exact: true });
-  const day2 = panel.getByRole("region", { name: "Day 2", exact: true });
-  const day3 = panel.getByRole("region", { name: "Day 3", exact: true });
-  const day4 = panel.getByRole("region", { name: "Day 4", exact: true });
+  const day1 = panel.locator("tbody tr").filter({ hasText: "Day 1" });
+  const day2 = panel.locator("tbody tr").filter({ hasText: "Day 2" });
+  const day3 = panel.locator("tbody tr").filter({ hasText: "Day 3" });
+  const day4 = panel.locator("tbody tr").filter({ hasText: "Day 4" });
   await expect(day1.getByRole("checkbox")).toBeChecked();
   await expect(day1).toContainText("Saved");
   await expect(day2).toContainText("Pending");
@@ -152,12 +153,11 @@ test("shows compact funds, optional goals and actionable daily states without ch
       fullPage: true,
     });
   }
-  await page
-    .getByRole("button", { name: "View checklist for Extra savings" })
-    .focus();
-  await page.keyboard.press("Enter");
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "Extra savings",
+  });
   await expect(
-    panel.getByRole("button", { name: "Fund details", exact: true }),
+    page.getByRole("button", { name: "Fund details", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(panel.locator(".fund-details-content")).toBeVisible();
   await expect(panel.getByRole("checkbox")).toHaveCount(0);
@@ -174,59 +174,54 @@ test("shows compact funds, optional goals and actionable daily states without ch
     });
   }
 
-  await panel
-    .getByRole("button", { name: "Fund details", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Fund details", exact: true }).click();
   await expect(panel).toContainText("₱200.00");
   await expect(
     panel.getByText("Withdraw, archive, or restore a fund", { exact: false }),
   ).toHaveCount(0);
-  await panel.getByRole("button", { name: "Add Savings", exact: true }).click();
+  await page.locator(".savings-slide-main").focus();
+  await page.getByRole("button", { name: "Add Savings", exact: true }).click();
   await expect(
     page.getByRole("dialog").getByLabel("Savings fund", { exact: true }),
   ).toContainText("Extra savings");
   await page.keyboard.press("Escape");
-  await expect(
-    panel.getByRole("button", { name: "Add Savings", exact: true }),
-  ).toBeFocused();
-  await page
-    .getByRole("button", { name: "View checklist for New bag fund" })
-    .click();
+  await expect(page.locator(".savings-slide-main")).toBeFocused();
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "New bag fund",
+  });
   await expect(panel.getByRole("progressbar")).toHaveCount(0);
-  await panel
-    .getByRole("button", { name: "Fund details", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Fund details", exact: true }).click();
   await expect(panel).toContainText("No goal set");
   await expect(page.locator(".savings-total strong")).toHaveText("₱400.00");
   // A fixed fund changing to flexible retains its historical checklist.
-  await page
-    .getByRole("button", { name: "View checklist for Challenge" })
-    .click();
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "Challenge",
+  });
   await expect(
-    panel.getByRole("button", { name: "Daily checklist", exact: true }),
+    page.getByRole("button", { name: "Daily checklist", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await panel.getByRole("button", { name: "Edit fund", exact: true }).click();
+  await menuAction(page, "Edit fund");
   await chooseOption(page.getByLabel("Saving frequency"), "flexible");
   await page.getByRole("button", { name: "Save fund", exact: true }).click();
   await expect(
-    panel.getByRole("button", { name: "Daily checklist", exact: true }),
+    page.getByRole("button", { name: "Daily checklist", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(day1.getByRole("checkbox")).toBeChecked();
   // Removing checklist eligibility on the selected fund resets its default view.
-  await page
-    .getByRole("button", { name: "View checklist for New bag fund" })
-    .click();
-  await panel.getByRole("button", { name: "Edit fund", exact: true }).click();
+  await chooseOption(page.getByRole("combobox", { name: "Savings fund" }), {
+    label: "New bag fund",
+  });
+  await menuAction(page, "Edit fund");
   await chooseOption(page.getByLabel("Saving frequency"), "fixed");
   await page.getByLabel("Daily savings amount").fill("25");
   await page.getByRole("button", { name: "Save fund", exact: true }).click();
   await expect(
-    panel.getByRole("button", { name: "Daily checklist", exact: true }),
+    page.getByRole("button", { name: "Daily checklist", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await panel.getByRole("button", { name: "Edit fund", exact: true }).click();
+  await menuAction(page, "Edit fund");
   await chooseOption(page.getByLabel("Saving frequency"), "flexible");
   await page.getByRole("button", { name: "Save fund", exact: true }).click();
   await expect(
-    panel.getByRole("button", { name: "Fund details", exact: true }),
+    page.getByRole("button", { name: "Fund details", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
 });

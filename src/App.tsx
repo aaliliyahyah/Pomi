@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useId,
   useRef,
@@ -52,10 +53,15 @@ import {
 } from "./check-in";
 import {
   savePeriod,
+  allowanceAllocation,
+  availableAllowance,
   dailyBalance,
   dayStatus,
   schoolDates,
   deleteFund,
+  restoreDeletedFund,
+  permanentlyDeleteFund,
+  setFundArchived,
   canDeleteFund,
   preferencesSchema,
   removePeriod,
@@ -128,11 +134,120 @@ const displayDate = (date: string) =>
     year: "numeric",
   });
 
+function SavingsActions({
+  disabled,
+  create,
+  deposit,
+}: {
+  disabled: boolean;
+  create(): void;
+  deposit(): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const revealTap = useRef(false);
+  useEffect(() => {
+    function outside(event: PointerEvent) {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, []);
+  return (
+    <div
+      ref={root}
+      className={`savings-sliding-actions${open ? " is-open" : ""}`}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setOpen(true);
+      }}
+      onPointerLeave={() => {
+        if (!root.current?.contains(document.activeElement)) setOpen(false);
+      }}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          root.current
+            ?.querySelector<HTMLButtonElement>(".savings-slide-main")
+            ?.focus();
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        className="button primary savings-slide-new"
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
+        onClick={create}
+      >
+        <Plus size={18} aria-hidden="true" />
+        New fund
+      </button>
+      <button
+        className="button primary savings-slide-main"
+        onPointerDown={(event) => {
+          revealTap.current = event.pointerType === "touch" && !open;
+        }}
+        aria-label={open ? "Add Savings" : "Savings add options"}
+        aria-expanded={open}
+        aria-disabled={(open && disabled) || undefined}
+        onClick={() => {
+          if (revealTap.current) {
+            revealTap.current = false;
+            setOpen(true);
+          } else if (!open) setOpen(true);
+          else if (!disabled) deposit();
+        }}
+      >
+        <Plus size={18} aria-hidden="true" />
+        <span>Add Savings</span>
+      </button>
+    </div>
+  );
+}
+
+function ExpandingHeaderAction({
+  label,
+  icon,
+  onClick,
+  disabled = false,
+  secondary = false,
+}: {
+  label: string;
+  icon?: ReactNode;
+  onClick(): void;
+  disabled?: boolean;
+  secondary?: boolean;
+}) {
+  return (
+    <div className="header-action-slot">
+      <button
+        className={`button ${secondary ? "secondary" : "primary"} expanding-action`}
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {icon ?? <Plus size={18} aria-hidden="true" />}
+        <span aria-hidden="true" className="expanding-action-label">
+          {label}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function Modal({
   title,
   children,
   close,
+  confirmation = false,
+  restoreFocus,
 }: {
+  restoreFocus?: () => HTMLElement | null;
+  confirmation?: boolean;
   title: string;
   children: ReactNode;
   close(): void;
@@ -146,14 +261,17 @@ function Modal({
         : null;
     const dialog = ref.current;
     dialog?.showModal();
+    dialog?.querySelector<HTMLElement>("[data-initial-focus]")?.focus();
     return () => {
       dialog?.close();
-      if (trigger?.isConnected) trigger.focus();
+      const target = restoreFocus?.() ?? trigger;
+      if (target?.isConnected) target.focus();
     };
   }, []);
   return (
     <dialog
       ref={ref}
+      className={confirmation ? "confirmation-dialog" : undefined}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
@@ -692,7 +810,7 @@ function EntryEditor({
               ))}
             </Select>
             <span className="field-help" id="select-1-hint">
-              Current balance: {money(balance)}
+              Current balance: <span className="money">{money(balance)}</span>
             </span>
           </div>
         )}
@@ -916,38 +1034,32 @@ function FundEditor({
             ? "One amount for each checked school day. Changes apply to unchecked savings."
             : "Add savings whenever you choose. Earlier fixed-day checks remain available in fund details."}
         </p>
-        <details
-          className="additional-details"
-          open={fund?.goal ? true : undefined}
-        >
-          <summary>Additional details</summary>
-          <div>
-            <label>
-              Goal amount <span className="optional">optional</span>
-              <span className="money-input">
-                <span>₱</span>
-                <input
-                  name="goal"
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  max="1000000000"
-                  step="0.01"
-                  placeholder="e.g. 1000"
-                  defaultValue={fund?.goal ? amountText(fund.goal) : ""}
-                />
-              </span>
-            </label>
-            {!fund && (
-              <AmountField label="Already saved" value="0.00" allowZero />
-            )}
-            <p className="field-help">
-              {fund
-                ? "To correct a starting balance, edit its entry in History."
-                : "Already saved money becomes a starting balance. It won’t reduce your allowance."}
-            </p>
-          </div>
-        </details>
+        <div>
+          <label>
+            Goal amount <span className="optional">optional</span>
+            <span className="money-input">
+              <span>₱</span>
+              <input
+                name="goal"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                max="1000000000"
+                step="0.01"
+                placeholder="e.g. 1000"
+                defaultValue={fund?.goal ? amountText(fund.goal) : ""}
+              />
+            </span>
+          </label>
+          {!fund && (
+            <AmountField label="Already saved" value="0.00" allowZero />
+          )}
+          <p className="field-help">
+            {fund
+              ? "To correct a starting balance, edit its entry in History."
+              : "Already saved money becomes a starting balance. It won’t reduce your allowance."}
+          </p>
+        </div>
       </Form>
     </Modal>
   );
@@ -1190,74 +1302,195 @@ function EntryList({
     </div>
   );
 }
-function FundCard({
-  fund,
-  balance,
-  withdraw,
-  edit,
-  archive,
-  remove,
-  details,
-  deletable,
-  selected,
+function FundManagement({
+  book,
+  notify,
 }: {
-  fund: Fund;
-  balance: number;
-  withdraw(): void;
-  edit(): void;
-  archive(): void;
-  remove(): void;
-  details(): void;
-  deletable: boolean;
-  selected: boolean;
+  book: Notebook;
+  notify(message: string): void;
 }) {
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState<Fund | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const removed = useRef(false);
+  const archived = book.funds.filter((fund) => fund.archived);
+  const balances = totals(book);
+  async function run(change: (current: Notebook) => Notebook, message: string) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await changeNotebook(change);
+      notify(message);
+      removed.current = pending !== null;
+      setPending(null);
+      requestAnimationFrame(() => heading.current?.focus());
+    } catch (e) {
+      setError(`${errorMessage(e)} Try again.`);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   return (
-    <article className={`fund-card ${fund.archived ? "archived" : ""}`}>
-      <h3 className="fund-selection-heading" aria-label={fund.name}>
-        <button
-          className="fund-select"
-          aria-label={`View checklist for ${fund.name}`}
-          aria-pressed={selected}
-          aria-controls="fund-checklist-panel"
-          onClick={details}
-        >
-          <span className="fund-symbol">
-            <Sprout size={20} aria-hidden="true" />
-          </span>
-          <span className="fund-card-copy">
-            <span className="fund-card-name">{fund.name}</span>
-            {fund.archived && <span className="fund-archived">Archived</span>}
-          </span>
-          <span className="fund-card-figures">
-            <span className="fund-value">{money(balance)}</span>
-          </span>
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-      </h3>
-      {fund.goal && (
-        <GoalProgress balance={balance} goal={fund.goal} name={fund.name} />
+    <section
+      className="panel settings-panel fund-management"
+      aria-label="Fund archives and deleted funds"
+      aria-busy={busy}
+    >
+      <h2 ref={heading} tabIndex={-1}>
+        Fund archives and deleted funds
+      </h2>
+      <p>
+        Archived funds keep their balances and history. Deleted empty funds stay
+        here until you restore or permanently remove them.
+      </p>
+      {!pending && error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
       )}
-      <ActionMenu label={`Actions for ${fund.name}`} className="fund-more">
-        <button onClick={edit}>Edit fund</button>
-        <button onClick={withdraw} disabled={balance === 0}>
-          Withdraw savings
-        </button>
-        <button onClick={archive}>
-          {fund.archived ? "Restore fund" : "Archive fund"}
-        </button>
-        <button className="danger" onClick={remove} disabled={!deletable}>
-          Delete fund
-        </button>
-        {!deletable && (
-          <p>
-            This fund has financial history. Archive it to keep your records
-            safe.
+      <section aria-label="Archived funds">
+        <h3>Archived funds ({archived.length})</h3>
+        {archived.length ? (
+          <ul className="managed-funds">
+            {archived.map((fund) => (
+              <li key={fund.id}>
+                <div>
+                  <strong>{fund.name}</strong>
+                  <span className="money">
+                    {money(balances.funds[fund.id])}
+                  </span>
+                </div>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  aria-label={`Restore fund ${fund.name} from archives`}
+                  onClick={() =>
+                    run(
+                      (current) => setFundArchived(current, fund.id, false),
+                      `${fund.name} restored. Find it in Savings.`,
+                    )
+                  }
+                >
+                  Restore fund
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="field-help">
+            No archived funds. Use a fund’s menu in Savings to archive it.
           </p>
         )}
-      </ActionMenu>
-    </article>
+      </section>
+      <section aria-label="Deleted funds">
+        <h3>Deleted funds ({book.deletedFunds.length})</h3>
+        {book.deletedFunds.length ? (
+          <ul className="managed-funds">
+            {[...book.deletedFunds]
+              .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+              .map((item) => (
+                <li key={item.fund.id}>
+                  <div>
+                    <strong>{item.fund.name}</strong>
+                    <span className="field-help">
+                      Deleted {displayDate(localDate(new Date(item.deletedAt)))}
+                    </span>
+                  </div>
+                  <div className="managed-fund-actions">
+                    <button
+                      className="button secondary"
+                      disabled={busy}
+                      aria-label={`Restore fund ${item.fund.name} from deleted funds`}
+                      onClick={() =>
+                        run(
+                          (current) =>
+                            restoreDeletedFund(current, item.fund.id),
+                          `${item.fund.name} restored. Find it in Savings.`,
+                        )
+                      }
+                    >
+                      Restore fund
+                    </button>
+                    <button
+                      className="button danger"
+                      disabled={busy}
+                      aria-label={`Delete permanently: ${item.fund.name}`}
+                      onClick={() => {
+                        setError("");
+                        removed.current = false;
+                        setPending(item.fund);
+                      }}
+                    >
+                      Delete permanently
+                    </button>
+                  </div>
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p className="field-help">
+            No deleted funds. Only funds deleted after this feature was added
+            can be recovered.
+          </p>
+        )}
+      </section>
+      {pending && (
+        <Modal
+          confirmation
+          title={`Delete ${pending.name} permanently?`}
+          restoreFocus={() => (removed.current ? heading.current : null)}
+          close={() => {
+            if (!lock.current) {
+              setPending(null);
+              setError("");
+            }
+          }}
+        >
+          <p className="modal-copy">
+            This permanently removes this empty fund from Deleted funds. You
+            cannot restore it afterward.
+          </p>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <button
+              data-initial-focus
+              className="button secondary"
+              disabled={busy}
+              onClick={() => {
+                setPending(null);
+                setError("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="button danger"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  (current) => permanentlyDeleteFund(current, pending.id),
+                  "Fund permanently deleted.",
+                )
+              }
+            >
+              {busy ? "Deleting…" : "Delete permanently"}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </section>
   );
 }
+
 function SettingsPage({
   book,
   notify,
@@ -1325,7 +1558,10 @@ function SettingsPage({
         <p>A little housekeeping for your money notes.</p>
       </header>
       <div className="settings-grid">
-        <Preferences book={book} notify={notify} />
+        <div className="settings-primary">
+          <Preferences book={book} notify={notify} />
+          <FundManagement book={book} notify={notify} />
+        </div>
         <div className="settings-secondary">
           <section className="panel settings-panel">
             <div className="section-title">
@@ -1454,6 +1690,7 @@ function SettingsPage({
       </div>
       {pending && (
         <Modal
+          confirmation
           title="Replace my notebook?"
           close={() => {
             if (!busy) {
@@ -1465,8 +1702,10 @@ function SettingsPage({
           <p className="modal-copy">
             This backup has {pending.funds.length} funds and{" "}
             {pending.entries.length} entries, with{" "}
-            {money(totals(pending).allowance)} available allowance and{" "}
-            {money(totals(pending).savings)} in savings.
+            <span className="money">{money(totals(pending).allowance)}</span>{" "}
+            available allowance and{" "}
+            <span className="money">{money(totals(pending).savings)}</span> in
+            savings.
           </p>
           <p className="error">
             Restoring replaces every current fund and entry on this device.
@@ -1604,7 +1843,7 @@ export default function App() {
   function selectPeriod(id: string) {
     setSelectedPeriodId(id);
     setExpenseSelection(undefined);
-    setExpenseDetailsOpen(true);
+    setExpenseDetailsOpen(false);
   }
 
   const [focusDay, setFocusDay] = useState<{
@@ -1613,13 +1852,20 @@ export default function App() {
   } | null>(null);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   const [fundViewSelection, setFundViewSelection] = useState<{
     fundId: string;
     hasChecklist: boolean;
     view: "checklist" | "details";
   }>();
-  const [expenseDetailsOpen, setExpenseDetailsOpen] = useState(true);
+  const [expenseView, setExpenseView] = useState<"daily" | "all">();
+  const [deleteRequest, setDeleteRequest] = useState<{
+    message: string;
+    action(): Promise<void>;
+  } | null>(null);
+  const deleteFocusTarget = useRef<HTMLElement | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [expenseDetailsOpen, setExpenseDetailsOpen] = useState(false);
   const [selectedFundId, setSelectedFundId] = useState<string>();
   const [fundFilter, setFundFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -1642,6 +1888,7 @@ export default function App() {
   useEffect(() => {
     const hash = () => {
       setPage(pageFromHash());
+      setExpenseDetailsOpen(false);
       setModal(null);
       setError("");
     };
@@ -1671,13 +1918,11 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    const funds =
-      loaded?.book?.funds.filter((fund) => showArchived || !fund.archived) ??
-      [];
+    const funds = loaded?.book?.funds.filter((fund) => !fund.archived) ?? [];
     setSelectedFundId((current) =>
       funds.some((fund) => fund.id === current) ? current : funds[0]?.id,
     );
-  }, [loaded?.book?.funds, showArchived]);
+  }, [loaded?.book?.funds]);
   const previousPage = useRef(page);
   useEffect(() => {
     if (!loaded?.book) return;
@@ -1727,6 +1972,10 @@ export default function App() {
   const selectedPeriod =
     book.periods.find((period) => period.id === selectedPeriodId) ??
     book.periods.at(-1);
+  const allocation = selectedPeriod
+    ? allowanceAllocation(book, selectedPeriod)
+    : { given: 0, available: 0, noClass: 0 };
+  const notebookAvailable = availableAllowance(book);
   const selectedDayNumber = selectedPeriod
     ? expenseSelection?.periodId === selectedPeriod.id &&
       selectedPeriod.days[expenseSelection.dayNumber - 1]
@@ -1768,9 +2017,7 @@ export default function App() {
   const recentEntries = sorted
     .filter((e) => !(e.kind.startsWith("opening_") && e.amount === 0))
     .slice(0, 3);
-  const visibleFunds = book.funds.filter(
-    (fund) => showArchived || !fund.archived,
-  );
+  const visibleFunds = book.funds.filter((fund) => !fund.archived);
   const selectedFund =
     visibleFunds.find((fund) => fund.id === selectedFundId) ?? visibleFunds[0];
   const fundHasChecklist = (fund: Fund) =>
@@ -1855,13 +2102,7 @@ export default function App() {
   const homeDayIndex =
     homePeriod?.days.findIndex((day) => day.date === today) ?? -1;
   const homeDay = homePeriod?.days[homeDayIndex];
-  const activeFunds = book.funds.filter((f) => !f.archived);
-  const goalFunds = activeFunds.filter((fund) => fund.goal);
-  const savingsGoal = goalFunds.reduce((sum, fund) => sum + fund.goal!, 0);
-  const savingsGoalBalance = goalFunds.reduce(
-    (sum, fund) => sum + Math.min(balances.funds[fund.id], fund.goal!),
-    0,
-  );
+  const activeFunds = visibleFunds;
 
   function editEntry(entry: Entry) {
     if (entry.periodId && entry.dayNumber) {
@@ -1877,55 +2118,53 @@ export default function App() {
       );
   }
   async function removeEntry(entry: Entry) {
+    deleteFocusTarget.current = null;
+    setDeleteError("");
+    setDeleteRequest({
+      message: `Delete this ${labels[entry.kind].toLowerCase()} of ${money(entry.amount)}? Your balances will be recalculated.`,
+      action: () => performRemoveEntry(entry),
+    });
+  }
+  async function performRemoveEntry(entry: Entry) {
     if (
-      !confirm(
-        `Delete this ${labels[entry.kind].toLowerCase()} of ${money(entry.amount)}? Your balances will be recalculated.`,
+      await commit(
+        (current) =>
+          entry.periodId
+            ? entry.dayNumber === undefined
+              ? removePeriod(current, entry.periodId)
+              : entry.kind === "deposit"
+                ? setSavingsDay(
+                    current,
+                    entry.periodId,
+                    entry.dayNumber,
+                    entry.fundId!,
+                    false,
+                  )
+                : setAllowanceDay(
+                    current,
+                    entry.periodId,
+                    entry.dayNumber,
+                    false,
+                  )
+            : withoutEntry(current, entry.id),
+        confirmAllowance,
       )
-    )
-      return;
-    try {
-      if (
-        await commit(
-          (current) =>
-            entry.periodId
-              ? entry.dayNumber === undefined
-                ? removePeriod(current, entry.periodId)
-                : entry.kind === "deposit"
-                  ? setSavingsDay(
-                      current,
-                      entry.periodId,
-                      entry.dayNumber,
-                      entry.fundId!,
-                      false,
-                    )
-                  : setAllowanceDay(
-                      current,
-                      entry.periodId,
-                      entry.dayNumber,
-                      false,
-                    )
-              : withoutEntry(current, entry.id),
-          confirmAllowance,
-        )
-      ) {
-        setToast("Entry deleted. Balances updated.");
-        if (page === "history")
-          requestAnimationFrame(() =>
-            document.getElementById("history-transactions-title")?.focus(),
-          );
-      }
-    } catch (e) {
-      setError(errorMessage(e));
+    ) {
+      setToast("Entry deleted. Balances updated.");
+      deleteFocusTarget.current =
+        page === "history"
+          ? document.getElementById("history-transactions-title")
+          : document.querySelector<HTMLElement>("main h1");
     }
   }
   async function archiveFund(fund: Fund) {
     try {
-      await changeNotebook((current) => ({
-        ...current,
-        funds: current.funds.map((f) =>
-          f.id === fund.id ? { ...f, archived: !f.archived } : f,
-        ),
-      }));
+      await changeNotebook((current) =>
+        setFundArchived(current, fund.id, !fund.archived),
+      );
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>("main h1")?.focus(),
+      );
       setToast(
         fund.archived
           ? "Fund restored."
@@ -1952,36 +2191,185 @@ export default function App() {
       {label}
     </button>
   );
-  const renderFund = (fund: Fund) => (
-    <FundCard
-      key={fund.id}
-      fund={fund}
-      balance={balances.funds[fund.id]}
-      selected={selectedFund?.id === fund.id}
-      details={() => {
-        setSelectedFundId(fund.id);
-        setFundViewSelection(undefined);
-        requestAnimationFrame(() =>
-          document.getElementById("fund-checklist-heading")?.focus(),
-        );
-      }}
-      deletable={canDeleteFund(book, fund.id)}
-      remove={async () => {
-        if (!confirm(`Delete ${fund.name}? This cannot be undone.`)) return;
-        try {
-          await changeNotebook((current) => deleteFund(current, fund.id));
-          setToast("Fund deleted.");
-        } catch (e) {
-          setError(errorMessage(e));
-        }
-      }}
-      withdraw={() =>
-        setModal({ type: "entry", kind: "return", fundId: fund.id })
-      }
-      edit={() => setModal({ type: "fund", fund })}
-      archive={() => archiveFund(fund)}
-    />
+  const headerPeriod = selectedPeriod ? (
+    <div className="header-period-row">
+      <PeriodSelector
+        book={book}
+        periodId={selectedPeriod.id}
+        select={selectPeriod}
+        presentation="header"
+      />
+      <ActionMenu label="Period actions" floating>
+        <button
+          onClick={() =>
+            setModal({ type: "period", periodId: selectedPeriod.id })
+          }
+        >
+          Edit period
+        </button>
+      </ActionMenu>
+    </div>
+  ) : null;
+  const fundDetails = (
+    <section
+      id={`fund-body-${selectedFund?.id}`}
+      className="fund-checklist-panel"
+      aria-label="Selected fund"
+      data-testid="selected-fund-panel"
+    >
+      {selectedFund ? (
+        <>
+          <h2 id="fund-checklist-heading" className="visually-hidden">
+            {selectedFund.name}
+          </h2>
+          <div className="savings-checklist-card panel">
+            <div className="savings-checklist-toolbar">
+              <PeriodSelector
+                presentation="header"
+                book={book}
+                periodId={selectedPeriod?.id}
+                select={selectPeriod}
+              />
+              <ActionMenu label="Fund view" floating>
+                <button
+                  aria-current={fundView === "checklist" ? "page" : undefined}
+                  onClick={() => setFundView("checklist")}
+                >
+                  Daily checklist
+                </button>
+                <button
+                  aria-current={fundView === "details" ? "page" : undefined}
+                  onClick={() => setFundView("details")}
+                >
+                  Fund details
+                </button>
+              </ActionMenu>
+            </div>
+            {fundView === "checklist" ? (
+              <>
+                {selectedFundHasChecklist ? (
+                  <>
+                    <div className="savings-checklist-content">
+                      {selectedFund.savingMode === "flexible" && (
+                        <p className="field-help">
+                          Earlier fixed-day savings are kept here. Add any
+                          amount using Add Savings.
+                        </p>
+                      )}
+                      <SavingsChecklists
+                        book={book}
+                        fund={selectedFund}
+                        period={selectedPeriod}
+                        confirmAllowance={confirmAllowance}
+                        edit={() =>
+                          setModal({ type: "fund", fund: selectedFund })
+                        }
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="flexible-fund-help">
+                    This is a flexible fund. Add savings whenever you choose.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="fund-details-content">
+                <table className="fund-details-table">
+                  <caption className="visually-hidden">Fund details</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Detail</th>
+                      <th scope="col">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Balance</th>
+                      <td className="money">
+                        {money(balances.funds[selectedFund.id])}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Saving frequency</th>
+                      <td>
+                        {selectedFund.savingMode === "fixed"
+                          ? "Fixed daily"
+                          : "Flexible"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Goal</th>
+                      <td className="money">
+                        {selectedFund.goal
+                          ? money(selectedFund.goal)
+                          : "No goal set"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Status</th>
+                      <td>{selectedFund.archived ? "Archived" : "Active"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                {!selectedFund.goal && (
+                  <p className="field-help">
+                    Set an optional goal in Edit fund.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <Empty title="Your checklist will appear here">
+          Create or restore a fund to start tracking savings.
+        </Empty>
+      )}
+    </section>
   );
+  const fundActions = selectedFund ? (
+    <ActionMenu label="Fund actions" floating>
+      <button onClick={() => setModal({ type: "fund", fund: selectedFund })}>
+        Edit fund
+      </button>
+      <button
+        disabled={balances.funds[selectedFund.id] === 0}
+        onClick={() =>
+          setModal({ type: "entry", kind: "return", fundId: selectedFund.id })
+        }
+      >
+        Withdraw savings
+      </button>
+      <button onClick={() => archiveFund(selectedFund)}>Archive fund</button>
+      <button
+        className="danger"
+        disabled={!canDeleteFund(book, selectedFund.id)}
+        onClick={() => {
+          deleteFocusTarget.current = null;
+          setDeleteError("");
+          setDeleteRequest({
+            message: `Move ${selectedFund.name} to Deleted funds? You can restore it in Settings.`,
+            action: async () => {
+              await changeNotebook((current) =>
+                deleteFund(current, selectedFund.id),
+              );
+              setToast("Fund moved to Deleted funds. Restore it in Settings.");
+              deleteFocusTarget.current =
+                document.querySelector<HTMLElement>("main h1");
+            },
+          });
+        }}
+      >
+        Delete fund
+      </button>
+      {!canDeleteFund(book, selectedFund.id) && (
+        <p>
+          This fund has financial history. Archive it to keep your records safe.
+        </p>
+      )}
+    </ActionMenu>
+  ) : null;
   return (
     <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       <a
@@ -2152,14 +2540,14 @@ export default function App() {
                         Available allowance
                       </span>
                       <div
-                        className={`hero-balance summary-amount ${balances.allowance < 0 ? "over-budget" : ""}`}
+                        className={`hero-balance summary-amount ${notebookAvailable < 0 ? "over-budget" : ""}`}
                       >
-                        {money(balances.allowance)}
+                        {money(notebookAvailable)}
                       </div>
                     </div>
                     <div className="balance-footer">
                       <p>
-                        {balances.allowance < 0
+                        {notebookAvailable < 0
                           ? "Below zero"
                           : "Remaining balance"}
                       </p>
@@ -2169,35 +2557,6 @@ export default function App() {
                           "Add allowance",
                           "button secondary",
                         )}
-                      </div>
-                    </div>
-                  </section>
-                  <section
-                    className="savings-summary financial-summary summary-savings"
-                    aria-label="Total savings"
-                  >
-                    <span className="balance-label summary-label">
-                      Total savings
-                    </span>
-                    <div className="hero-balance summary-amount">
-                      {money(balances.savings)}
-                    </div>
-                  </section>
-                  <section
-                    className="home-expenses financial-summary summary-spending"
-                    aria-label="Expenses summary"
-                  >
-                    <span className="balance-label summary-label">
-                      Total expenses
-                    </span>
-                    <div
-                      className="hero-balance summary-amount"
-                      data-testid="home-expenses-total"
-                    >
-                      {money(totalSpent)}
-                    </div>
-                    <div className="balance-footer">
-                      <div className="balance-actions">
                         {entryButton(
                           "expense",
                           "Record expense",
@@ -2255,6 +2614,15 @@ export default function App() {
                       All funds
                       <ChevronRight size={16} aria-hidden="true" />
                     </a>
+                    <div className="home-funds-actions">
+                      <button
+                        className="button secondary"
+                        onClick={() => setModal({ type: "fund" })}
+                      >
+                        <Plus size={16} aria-hidden="true" />
+                        New fund
+                      </button>
+                    </div>
                   </div>
                   <div className="home-funds">
                     {activeFunds.slice(0, 3).map((fund) => {
@@ -2296,16 +2664,6 @@ export default function App() {
                       </Empty>
                     )}
                   </div>
-
-                  <div className="home-funds-actions">
-                    <button
-                      className="button secondary"
-                      onClick={() => setModal({ type: "fund" })}
-                    >
-                      <Plus size={16} aria-hidden="true" />
-                      New fund
-                    </button>
-                  </div>
                 </section>
                 <section
                   className="panel recent-panel"
@@ -2343,12 +2701,19 @@ export default function App() {
           )}
           {page === "allowance" && (
             <>
-              <header className="page-heading action-heading">
+              <header className="page-heading action-heading period-page-heading allowance-page-heading">
                 <div>
                   <h1 tabIndex={-1}>
                     My allowance<span>.</span>
+                    <Sticker kind="bow" />
                   </h1>
-                  <p>Your allowance and savings, one day at a time.</p>
+                </div>
+                <div className="header-controls">
+                  {headerPeriod}
+                  <ExpandingHeaderAction
+                    label="Add allowance"
+                    onClick={() => setModal({ type: "period" })}
+                  />
                 </div>
               </header>
               <div
@@ -2356,57 +2721,30 @@ export default function App() {
                 aria-label="Notebook balances"
               >
                 <div className="financial-summary summary-allowance">
+                  <span className="summary-label">Given allowance</span>
+                  <strong
+                    className="summary-amount"
+                    data-testid="given-allowance"
+                  >
+                    {money(allocation.given)}
+                  </strong>
+                </div>
+                <div className="allowance-saved financial-summary summary-savings">
                   <span className="summary-label">Available allowance</span>
                   <strong
                     className="summary-amount"
                     data-testid="allowance-balance"
                   >
-                    {money(balances.allowance)}
-                  </strong>
-                  {!book.periods.length && (
-                    <div className="summary-actions">
-                      {entryButton("allowance", "Add allowance")}
-                    </div>
-                  )}
-                </div>
-                <div className="allowance-saved financial-summary summary-savings">
-                  <span className="summary-label">Total savings</span>
-                  <strong
-                    className="summary-amount"
-                    data-testid="savings-balance"
-                  >
-                    {money(balances.savings)}
+                    {money(allocation.available)}
                   </strong>
                 </div>
                 <div className="allowance-spent financial-summary summary-spending">
-                  <span className="summary-label">Total spent</span>
+                  <span className="summary-label">No class allowance</span>
                   <strong className="summary-amount">
-                    {money(totalSpent)}
+                    {money(allocation.noClass)}
                   </strong>
                 </div>
               </div>
-              {book.periods.length > 0 && (
-                <div className="period-toolbar">
-                  <PeriodSelector
-                    book={book}
-                    periodId={selectedPeriod?.id}
-                    select={selectPeriod}
-                  />
-                  {selectedPeriod && (
-                    <button
-                      className="button secondary"
-                      onClick={() =>
-                        setModal({
-                          type: "period",
-                          periodId: selectedPeriod.id,
-                        })
-                      }
-                    >
-                      Edit period
-                    </button>
-                  )}
-                </div>
-              )}
               <section
                 className="panel section-block checkin-section"
                 aria-label="Daily check-in"
@@ -2447,7 +2785,6 @@ export default function App() {
                       <div>
                         <h2>Daily allowance</h2>
                       </div>
-                      {entryButton("allowance", "Add allowance")}
                     </div>
                     {selectedPeriod && (
                       <article
@@ -2468,33 +2805,42 @@ export default function App() {
           )}
           {page === "expenses" && (
             <div className="expenses-page">
-              <header className="page-heading expenses-heading">
+              <header className="page-heading action-heading expenses-heading period-page-heading">
                 <div>
                   <h1 tabIndex={-1}>
                     My expenses<span>.</span>
                     <Sticker kind="bow" />
                   </h1>
-                  <p>Keep track of where your allowance goes.</p>
+                  <p>A little for today. A little for your dreams.</p>
                 </div>
-                <span className="today-label">{displayDate(today)}</span>
+                <span className="today-label">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  {new Date(`${today}T12:00:00`).toLocaleDateString("en-PH", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+                <div className="header-controls">
+                  <ExpandingHeaderAction
+                    label="Add expense"
+                    onClick={() =>
+                      (expenseView ?? (selectedPeriod ? "daily" : "all")) ===
+                        "daily" &&
+                      selectedPeriod &&
+                      selectedDayNumber &&
+                      selectedDay?.amount !== null &&
+                      !selectedDay?.noClass
+                        ? recordDayExpense(selectedPeriod.id, selectedDayNumber)
+                        : setModal({ type: "entry", kind: "expense" })
+                    }
+                  />
+                </div>
               </header>
               <div
                 className="expense-summary-grid expenses-notebook-summary summary-group summary-group-four"
                 aria-label="Expense overview"
               >
-                <section
-                  className="expense-allowance-card financial-summary summary-allowance"
-                  aria-label="Daily allowance"
-                >
-                  <div className="summary-content">
-                    <h2 className="summary-label">Daily allowance</h2>
-                    <div className="hero-balance summary-amount">
-                      {selectedDailyBalance && !selectedDay?.noClass
-                        ? money(selectedDailyBalance.allocated)
-                        : "—"}
-                    </div>
-                  </div>
-                </section>
                 <section
                   className="expense-total-card financial-summary summary-spending"
                   aria-label="Total spent"
@@ -2510,14 +2856,27 @@ export default function App() {
                   </div>
                 </section>
                 <section
-                  className="expense-saved-card financial-summary summary-savings"
-                  aria-label="Total savings"
+                  className="financial-summary summary-neutral"
+                  aria-label="Daily remaining"
                 >
                   <div className="summary-content">
-                    <h2 className="summary-label">Saved</h2>
-                    <div className="hero-balance summary-amount">
-                      {money(balances.savings)}
+                    <h2 className="summary-label">Daily remaining</h2>
+                    <div
+                      className={`summary-amount ${selectedDailyBalance && selectedDailyBalance.remaining < 0 ? "over-budget" : ""}`}
+                      data-testid="daily-remaining-summary"
+                    >
+                      {selectedDailyBalance &&
+                      selectedDay &&
+                      !selectedDay.noClass &&
+                      selectedDay.amount !== null
+                        ? money(selectedDailyBalance.remaining)
+                        : "—"}
                     </div>
+                    <small>
+                      {selectedDay?.date
+                        ? displayDate(selectedDay.date)
+                        : "No day selected"}
+                    </small>
                   </div>
                 </section>
                 <section
@@ -2535,468 +2894,418 @@ export default function App() {
                   </div>
                 </section>
               </div>
-              {selectedPeriod && selectedDayNumber && (
-                <div className="expense-controls daily-budget-selectors">
-                  <PeriodSelector
-                    book={book}
-                    periodId={selectedPeriod.id}
-                    select={selectPeriod}
-                  />
-                  <button
-                    className="button secondary"
-                    onClick={() =>
-                      setModal({ type: "period", periodId: selectedPeriod.id })
-                    }
-                  >
-                    Edit period
-                  </button>
-                </div>
+              {false && (
+                <div className="expense-view-switch fund-detail-switch" />
               )}
-              {selectedPeriod && selectedDayNumber && (
-                <section
-                  className="expense-day-list"
-                  aria-label="Daily allowance balance"
-                >
-                  {selectedPeriod.days.map((day, index) => {
-                    const number = index + 1;
-                    const balance = dailyBalance(book, selectedPeriod, number);
-                    const selected =
-                      number === selectedDayNumber && expenseDetailsOpen;
-                    const started = day.amount !== null && !day.noClass;
-                    const status = dayStatus(book, selectedPeriod, index);
-                    return (
-                      <article
-                        className={`expense-day ${selected ? "is-selected" : ""}`}
-                        key={number}
-                      >
-                        <button
-                          className="expense-day-toggle"
-                          aria-expanded={selected}
-                          aria-controls={`expense-day-${number}`}
-                          onClick={() => {
-                            setExpenseDetailsOpen(!selected);
-                            setExpenseSelection({
-                              periodId: selectedPeriod.id,
-                              dayNumber: number,
-                            });
-                          }}
-                        >
-                          <span
-                            className={`expense-day-status ${started ? "is-started" : ""}`}
-                            aria-hidden="true"
-                          >
-                            {started ? <Check size={16} /> : <span />}
-                          </span>
-                          <span className="expense-day-date">
-                            <strong>
-                              {day.date ? displayDate(day.date) : "No date"}
-                            </strong>
-                            <small>
-                              Day {number} ·{" "}
-                              {day.noClass
-                                ? "No class"
-                                : day.amount === null
-                                  ? "Not started"
-                                  : status === "Savings Completed"
-                                    ? "Savings completed"
-                                    : "Budget started"}
-                            </small>
-                          </span>
-                          <span
-                            className={`expense-day-metrics ${selected ? "daily-budget-breakdown" : ""}`}
-                          >
-                            <span>
-                              <span>Allowance</span>
-                              <strong>
-                                {day.noClass ? "—" : money(balance.allocated)}
-                              </strong>
-                            </span>
-                            <span>
-                              <span>Spent</span>
-                              <strong>
-                                {day.noClass ? "—" : money(balance.spent)}
-                              </strong>
-                            </span>
-                            <span>
-                              <span>Saved</span>
-                              <strong>
-                                {day.noClass ? "—" : money(balance.saved)}
-                              </strong>
-                            </span>
-                            <span>
-                              <span>Remaining</span>
-                              <strong
-                                data-testid={
-                                  selected ? "daily-remaining" : undefined
-                                }
-                                className={
-                                  started && balance.remaining < 0
-                                    ? "over-budget"
-                                    : ""
-                                }
-                              >
-                                {started ? money(balance.remaining) : "—"}
-                              </strong>
-                            </span>
-                          </span>
-                          <ChevronDown
-                            className="expense-day-chevron"
-                            size={18}
-                            aria-hidden="true"
+              {(expenseView ?? (selectedPeriod ? "daily" : "all")) ===
+                "daily" && (
+                <>
+                  {selectedPeriod && selectedDayNumber && (
+                    <section
+                      className="expense-day-list panel"
+                      aria-label="Daily allowance balance"
+                    >
+                      <div className="expense-period-toolbar">
+                        {selectedPeriod && (
+                          <PeriodSelector
+                            book={book}
+                            periodId={selectedPeriod.id}
+                            select={selectPeriod}
+                            presentation="header"
                           />
-                        </button>
-                        {selected && (
-                          <div
-                            id={`expense-day-${number}`}
-                            className="expense-day-body"
-                          >
-                            <section
-                              className="expenses-panel expense-day-records"
-                              aria-label="Selected day expenses"
-                            >
-                              <div className="section-title expenses-records-heading">
-                                <h2>Expenses ({selectedDayExpenses.length})</h2>
-                                <button
-                                  className="button secondary"
-                                  onClick={() =>
-                                    recordDayExpense(selectedPeriod.id, number)
-                                  }
-                                >
-                                  <Plus size={17} aria-hidden="true" /> Record
-                                  expense
-                                </button>
-                              </div>
-                              {selectedDayExpenses.length ? (
-                                <EntryList
-                                  entries={selectedDayExpenses}
-                                  book={book}
-                                  edit={editEntry}
-                                  remove={removeEntry}
-                                />
-                              ) : (
-                                <p className="field-help">
-                                  {day.noClass
-                                    ? "No class — no daily budget."
-                                    : !started
-                                      ? "Start this day in Allowance to assign expenses."
-                                      : "No expenses yet. Record your first expense for this day."}
-                                </p>
-                              )}
-                            </section>
-                            <div className="expense-day-actions">
-                              {!started && !day.noClass && (
-                                <button
-                                  className="button secondary"
-                                  onClick={() =>
-                                    openDay(selectedPeriod.id, number)
-                                  }
-                                >
-                                  Start day in Allowance
-                                  <ChevronRight size={16} aria-hidden="true" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
                         )}
-                      </article>
-                    );
-                  })}
+                        <ActionMenu label="Expense options" floating>
+                          <button
+                            aria-pressed={
+                              (expenseView ??
+                                (selectedPeriod ? "daily" : "all")) === "daily"
+                            }
+                            onClick={() => setExpenseView("daily")}
+                          >
+                            Daily expenses
+                          </button>
+                          <button
+                            aria-pressed={
+                              (expenseView ??
+                                (selectedPeriod ? "daily" : "all")) === "all"
+                            }
+                            onClick={() => setExpenseView("all")}
+                          >
+                            All expenses
+                          </button>
+                          {selectedPeriod && (
+                            <button
+                              onClick={() =>
+                                setModal({
+                                  type: "period",
+                                  periodId: selectedPeriod.id,
+                                })
+                              }
+                            >
+                              Edit period
+                            </button>
+                          )}
+                        </ActionMenu>
+                      </div>
+                      <table className="savings-days-table expense-days-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Daily allowance</th>
+                            <th scope="col">Spent</th>
+                            <th scope="col">Remaining</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedPeriod.days.map((day, index) => {
+                            const number = index + 1;
+                            const balance = dailyBalance(
+                              book,
+                              selectedPeriod,
+                              number,
+                            );
+                            const selected =
+                              number === selectedDayNumber &&
+                              expenseDetailsOpen;
+                            const started = day.amount !== null && !day.noClass;
+                            const status = dayStatus(
+                              book,
+                              selectedPeriod,
+                              index,
+                            );
+                            return (
+                              <Fragment key={number}>
+                                <tr
+                                  className={
+                                    started
+                                      ? "is-saved"
+                                      : day.noClass
+                                        ? "is-no-class"
+                                        : ""
+                                  }
+                                  onClick={() => {
+                                    setExpenseDetailsOpen(!selected);
+                                    setExpenseSelection({
+                                      periodId: selectedPeriod.id,
+                                      dayNumber: number,
+                                    });
+                                  }}
+                                >
+                                  <th scope="row">
+                                    <button
+                                      className="expense-table-date"
+                                      aria-expanded={selected}
+                                      aria-controls={`expense-day-${number}`}
+                                    >
+                                      <span
+                                        className={`expense-day-status ${started ? "is-started" : ""}`}
+                                        aria-hidden="true"
+                                      >
+                                        {started ? (
+                                          <Check size={16} />
+                                        ) : (
+                                          <span />
+                                        )}
+                                      </span>
+                                      <span className="expense-day-date">
+                                        <strong>
+                                          {day.date
+                                            ? displayDate(day.date)
+                                            : "No date"}
+                                        </strong>
+                                        <small>
+                                          Day {number} ·{" "}
+                                          {day.noClass
+                                            ? "No class"
+                                            : day.amount === null
+                                              ? "Not started"
+                                              : status === "Savings Completed"
+                                                ? "Savings completed"
+                                                : "Budget started"}
+                                        </small>
+                                      </span>
+                                    </button>
+                                  </th>
+                                  <td data-label="Daily allowance">
+                                    {day.noClass
+                                      ? "—"
+                                      : money(
+                                          day.amount ??
+                                            selectedPeriod.dailyAmount,
+                                        )}
+                                  </td>
+                                  <td data-label="Spent">
+                                    {day.noClass ? "—" : money(balance.spent)}
+                                  </td>
+                                  <td
+                                    data-label="Remaining"
+                                    data-testid={
+                                      selected ? "daily-remaining" : undefined
+                                    }
+                                    className={
+                                      started && balance.remaining < 0
+                                        ? "over-budget"
+                                        : ""
+                                    }
+                                  >
+                                    <span className="expense-remaining-cell">
+                                      <span>
+                                        {started
+                                          ? money(balance.remaining)
+                                          : "—"}
+                                      </span>
+                                      <ChevronDown
+                                        className={`expense-day-chevron ${selected ? "is-open" : ""}`}
+                                        size={18}
+                                        aria-hidden="true"
+                                      />
+                                    </span>
+                                  </td>
+                                </tr>
+                                {selected && (
+                                  <tr className="expense-details-row">
+                                    <td colSpan={4}>
+                                      <div
+                                        id={`expense-day-${number}`}
+                                        className="expense-day-body"
+                                      >
+                                        <section
+                                          className="expenses-panel expense-day-records"
+                                          aria-label="Selected day expenses"
+                                        >
+                                          <div className="section-title expenses-records-heading">
+                                            <h2>
+                                              Expenses (
+                                              {selectedDayExpenses.length})
+                                            </h2>
+                                          </div>
+                                          {selectedDayExpenses.length ? (
+                                            <EntryList
+                                              entries={selectedDayExpenses}
+                                              book={book}
+                                              edit={editEntry}
+                                              remove={removeEntry}
+                                            />
+                                          ) : (
+                                            <p className="field-help">
+                                              {day.noClass
+                                                ? "No class — no daily budget."
+                                                : !started
+                                                  ? "Start this day in Allowance to assign expenses."
+                                                  : "No expenses yet. Record your first expense for this day."}
+                                            </p>
+                                          )}
+                                        </section>
+                                        {!started && !day.noClass && (
+                                          <div className="expense-day-actions">
+                                            <button
+                                              className="button secondary"
+                                              onClick={() =>
+                                                openDay(
+                                                  selectedPeriod.id,
+                                                  number,
+                                                )
+                                              }
+                                            >
+                                              Start day in Allowance{" "}
+                                              <ChevronRight
+                                                size={16}
+                                                aria-hidden="true"
+                                              />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </section>
+                  )}
+                  {!selectedPeriod && (
+                    <section className="panel daily-budget-panel">
+                      <Empty title="No daily allowance yet">
+                        <a href="#allowance">Add an allowance period</a> to
+                        start tracking daily spending.
+                      </Empty>
+                    </section>
+                  )}
+                </>
+              )}
+              {(expenseView ?? (selectedPeriod ? "daily" : "all")) ===
+                "all" && (
+                <section
+                  className="panel expenses-panel"
+                  aria-label="Expense records"
+                >
+                  <div className="expense-period-toolbar">
+                    {selectedPeriod && (
+                      <PeriodSelector
+                        book={book}
+                        periodId={selectedPeriod.id}
+                        select={selectPeriod}
+                        presentation="header"
+                      />
+                    )}
+                    <ActionMenu label="Expense options" floating>
+                      <button
+                        aria-pressed={
+                          (expenseView ??
+                            (selectedPeriod ? "daily" : "all")) === "daily"
+                        }
+                        onClick={() => setExpenseView("daily")}
+                      >
+                        Daily expenses
+                      </button>
+                      <button
+                        aria-pressed={
+                          (expenseView ??
+                            (selectedPeriod ? "daily" : "all")) === "all"
+                        }
+                        onClick={() => setExpenseView("all")}
+                      >
+                        All expenses
+                      </button>
+                      {selectedPeriod && (
+                        <button
+                          onClick={() =>
+                            setModal({
+                              type: "period",
+                              periodId: selectedPeriod.id,
+                            })
+                          }
+                        >
+                          Edit period
+                        </button>
+                      )}
+                    </ActionMenu>
+                  </div>
+                  <div className="section-title expenses-records-heading">
+                    <h2>All expenses ({expenseEntries.length})</h2>
+                  </div>
+                  <p className="visually-hidden" role="status">
+                    {expenseEntries.length} expenses in this notebook
+                  </p>
+                  {expenseEntries.length ? (
+                    <EntryList
+                      entries={expenseEntries}
+                      book={book}
+                      edit={editEntry}
+                      remove={removeEntry}
+                    />
+                  ) : (
+                    <Empty title="No expenses yet">
+                      Use Record expense above to add your first expense.
+                    </Empty>
+                  )}
                 </section>
               )}
-              {!selectedPeriod && (
-                <section className="panel daily-budget-panel">
-                  <Empty title="No daily allowance yet">
-                    <a href="#allowance">Add an allowance period</a> to start
-                    tracking daily spending.
-                  </Empty>{" "}
-                  <button
-                    className="button primary"
-                    onClick={() => setModal({ type: "entry", kind: "expense" })}
-                  >
-                    <Plus size={17} aria-hidden="true" />
-                    Record expense
-                  </button>
-                </section>
-              )}
-              <section
-                className="panel expenses-panel"
-                aria-label="Expense records"
-              >
-                <div className="section-title expenses-records-heading">
-                  <h2>All expenses ({expenseEntries.length})</h2>
-                  <button
-                    className="button secondary"
-                    onClick={() => setModal({ type: "entry", kind: "expense" })}
-                  >
-                    <Plus size={17} aria-hidden="true" /> Record expense
-                  </button>
-                </div>
-                <p className="visually-hidden" role="status">
-                  {expenseEntries.length} expenses in this notebook
-                </p>
-                {expenseEntries.length ? (
-                  <EntryList
-                    entries={expenseEntries}
-                    book={book}
-                    edit={editEntry}
-                    remove={removeEntry}
-                  />
-                ) : (
-                  <Empty title="No expenses yet">
-                    Use Record expense to add your first expense.
-                  </Empty>
-                )}
-              </section>
             </div>
           )}
           {page === "savings" && (
             <div className="savings-page">
-              <header className="page-heading action-heading savings-heading">
-                <div>
-                  <h1 tabIndex={-1}>
-                    Savings funds<span>.</span>
-                  </h1>
-                  <p>Different dreams. A little money put aside for each.</p>
-                </div>
-                <div className="savings-heading-actions">
-                  <button
-                    className="button secondary"
-                    onClick={() => setModal({ type: "fund" })}
-                  >
-                    <Plus size={17} aria-hidden="true" />
-                    New fund
-                  </button>
-                  <button
-                    className="button primary"
-                    disabled={!activeFunds.length}
-                    onClick={() => setModal({ type: "entry", kind: "deposit" })}
-                  >
-                    <Plus size={17} aria-hidden="true" />
-                    Add Savings
-                  </button>
+              <header className="page-heading period-page-heading savings-heading">
+                <h1 tabIndex={-1}>
+                  Savings funds<span>.</span>
+                  <Sticker kind="bow" />
+                </h1>
+                <div className="header-controls">
+                  {selectedFund ? (
+                    <div className="header-period-row savings-fund-selector">
+                      <Select
+                        aria-label="Savings fund"
+                        value={selectedFund.id}
+                        onChange={(event) => {
+                          setSelectedFundId(event.target.value);
+                          setFundViewSelection(undefined);
+                        }}
+                      >
+                        {visibleFunds.map((fund) => (
+                          <option key={fund.id} value={fund.id}>
+                            {fund.name}
+                          </option>
+                        ))}
+                      </Select>
+                      {fundActions}
+                    </div>
+                  ) : (
+                    <span>No active funds</span>
+                  )}
+                  <SavingsActions
+                    disabled={!selectedFund}
+                    create={() => setModal({ type: "fund" })}
+                    deposit={() =>
+                      setModal({
+                        type: "entry",
+                        kind: "deposit",
+                        fundId: selectedFund?.id,
+                      })
+                    }
+                  />
                 </div>
               </header>
-              <div className="savings-overview-grid">
-                <section
-                  className="savings-overview savings-total-card financial-summary summary-savings"
-                  aria-label="Total savings"
-                >
-                  <div className="savings-total summary-content">
-                    <span className="summary-label">Total savings</span>
-                    <strong className="summary-amount">
-                      {money(balances.savings)}
-                    </strong>
-                  </div>
-                </section>
-                {savingsGoal > 0 ? (
-                  <section
-                    className="savings-overview savings-overall-progress"
-                    aria-label="Overall goal progress"
-                  >
-                    <div>
-                      <h2>Overall goal progress</h2>
-                      <GoalProgress
-                        balance={savingsGoalBalance}
-                        goal={savingsGoal}
-                        name="Active funds overall"
-                      />
-                    </div>
-                    <Sticker kind="sparkle" />
-                  </section>
-                ) : (
-                  <section className="savings-overview savings-overall-progress savings-goal-hint">
-                    Add an optional goal in fund details to track your progress.
-                  </section>
-                )}
-              </div>
-              <div className="savings-list-heading">
-                <h2>
-                  {showArchived ? "All my funds" : "My active funds"}{" "}
-                  <span>({visibleFunds.length})</span>
-                </h2>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={showArchived}
-                    onChange={(event) => setShowArchived(event.target.checked)}
-                  />
-                  Show archived
-                </label>
-              </div>
-              <div className="savings-workspace">
-                <section className="fund-browser" aria-label="Savings funds">
-                  <div className="fund-grid savings-funds">
-                    {visibleFunds.map((fund) => (
-                      <div
-                        key={fund.id}
-                        className={`fund-choice${selectedFund?.id === fund.id ? " selected-fund" : ""}`}
-                      >
-                        {renderFund(fund)}
+              {selectedFund && (
+                <>
+                  <div className="savings-overview-grid">
+                    <section
+                      className="savings-overview savings-total-card financial-summary summary-savings"
+                      aria-label="Total savings"
+                    >
+                      <div className="savings-total summary-content">
+                        <span className="summary-label">Total savings</span>
+                        <strong className="summary-amount">
+                          {money(
+                            selectedFund ? balances.funds[selectedFund.id] : 0,
+                          )}
+                        </strong>
                       </div>
-                    ))}
-                  </div>
-                  {!visibleFunds.length && (
-                    <Empty title="Make room for a new goal">
-                      Create a fund using New fund above, or show archived funds
-                      to restore one.
-                    </Empty>
-                  )}
-                </section>
-                <section
-                  id="fund-checklist-panel"
-                  className="panel fund-checklist-panel"
-                  aria-label="Selected fund checklist"
-                >
-                  {selectedFund ? (
-                    <>
-                      <header className="selected-fund-heading">
-                        <span className="fund-symbol">
-                          <Sprout size={24} aria-hidden="true" />
-                        </span>
+                    </section>
+                    {selectedFund?.goal ? (
+                      <section
+                        className="savings-overview savings-overall-progress"
+                        aria-label="Goal progress"
+                      >
                         <div>
-                          <h2 id="fund-checklist-heading" tabIndex={-1}>
-                            {selectedFund.name}
-                          </h2>
-                          <p>
-                            {selectedFund.archived ? "Archived · " : ""}
-                            {selectedFund.savingMode === "fixed"
-                              ? `Fixed daily savings${selectedFund.dailyAmount ? ` · ${money(selectedFund.dailyAmount)} per school day` : ""}`
-                              : "Flexible savings · Any amount"}
-                          </p>
-                        </div>
-                      </header>
-                      {selectedFund.goal && (
-                        <div className="selected-fund-goal">
-                          <h3>Goal progress</h3>
+                          <h2>Goal progress</h2>
                           <GoalProgress
                             balance={balances.funds[selectedFund.id]}
                             goal={selectedFund.goal}
                             name={selectedFund.name}
                           />
                         </div>
-                      )}
-                      <div
-                        className="fund-detail-switch"
-                        role="group"
-                        aria-label="Fund view"
-                      >
-                        <button
-                          className="button secondary"
-                          aria-pressed={fundView === "checklist"}
-                          onClick={() => setFundView("checklist")}
-                        >
-                          Daily checklist
-                        </button>
-                        <button
-                          className="button secondary"
-                          aria-pressed={fundView === "details"}
-                          onClick={() => setFundView("details")}
-                        >
-                          Fund details
-                        </button>
-                      </div>
-                      {fundView === "checklist" ? (
-                        <>
-                          {selectedFundHasChecklist ? (
-                            <>
-                              <PeriodSelector
-                                book={book}
-                                periodId={selectedPeriod?.id}
-                                select={selectPeriod}
-                              />
-                              {selectedFund.savingMode === "flexible" && (
-                                <p className="field-help">
-                                  Earlier fixed-day savings are kept here. Add
-                                  any amount using Add Savings.
-                                </p>
-                              )}
-                              <SavingsChecklists
-                                book={book}
-                                fund={selectedFund}
-                                period={selectedPeriod}
-                                confirmAllowance={confirmAllowance}
-                                edit={() =>
-                                  setModal({ type: "fund", fund: selectedFund })
-                                }
-                              />
-                            </>
-                          ) : (
-                            <p className="flexible-fund-help">
-                              This is a flexible fund. Add savings whenever you
-                              choose.
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <div className="fund-details-content">
-                          <dl>
-                            <div>
-                              <dt>Balance</dt>
-                              <dd>{money(balances.funds[selectedFund.id])}</dd>
-                            </div>
-                            <div>
-                              <dt>Saving frequency</dt>
-                              <dd>
-                                {selectedFund.savingMode === "fixed"
-                                  ? "Fixed daily"
-                                  : "Flexible"}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Goal</dt>
-                              <dd>
-                                {selectedFund.goal
-                                  ? money(selectedFund.goal)
-                                  : "No goal set"}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Status</dt>
-                              <dd>
-                                {selectedFund.archived ? "Archived" : "Active"}
-                              </dd>
-                            </div>
-                          </dl>
-                          {!selectedFund.goal && (
-                            <p className="field-help">
-                              Set an optional goal in Edit fund → Additional
-                              details.
-                            </p>
-                          )}
+                      </section>
+                    ) : (
+                      <section className="savings-overview savings-overall-progress savings-goal-hint">
+                        <div>
+                          <h2>Goal progress</h2>
+                          <p className="field-help">
+                            No goal set. Set a goal in Edit fund to track
+                            progress.
+                          </p>
+                          <div
+                            className="goal-meter empty-goal-track"
+                            aria-hidden="true"
+                          />
                         </div>
-                      )}
-                      <footer className="selected-fund-actions">
-                        <button
-                          className="button secondary"
-                          disabled={selectedFund.archived}
-                          onClick={() =>
-                            setModal({
-                              type: "entry",
-                              kind: "deposit",
-                              fundId: selectedFund.id,
-                            })
-                          }
-                        >
-                          <Plus size={17} aria-hidden="true" />
-                          Add Savings
-                        </button>
-                        <button
-                          className="button secondary"
-                          onClick={() =>
-                            setModal({ type: "fund", fund: selectedFund })
-                          }
-                        >
-                          Edit fund
-                        </button>
-                      </footer>
-                    </>
-                  ) : (
-                    <Empty title="Your checklist will appear here">
-                      Create or restore a fund to start tracking savings.
-                    </Empty>
-                  )}
-                </section>
-              </div>
+                      </section>
+                    )}
+                  </div>
+                </>
+              )}
+              {selectedFund ? (
+                <>
+                  <div className="savings-workspace">{fundDetails}</div>
+                </>
+              ) : (
+                <Empty title="Make room for a new goal">
+                  Create a fund using the plus button above, or{" "}
+                  <a href="#settings">restore an archived fund in Settings</a>.
+                </Empty>
+              )}
             </div>
           )}
           {page === "history" && (
@@ -3213,8 +3522,55 @@ export default function App() {
           saved={setToast}
         />
       )}
+      {deleteRequest && (
+        <Modal
+          confirmation
+          title="Delete record?"
+          restoreFocus={() => deleteFocusTarget.current}
+          close={() => {
+            if (!deleteBusy) setDeleteRequest(null);
+          }}
+        >
+          <p className="modal-copy">{deleteRequest.message}</p>
+          {deleteError && (
+            <p className="error" role="alert">
+              {deleteError} Try again.
+            </p>
+          )}
+          <div className="dialog-actions">
+            <button
+              data-initial-focus
+              className="button secondary"
+              disabled={deleteBusy}
+              onClick={() => setDeleteRequest(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="button danger"
+              disabled={deleteBusy}
+              onClick={async () => {
+                if (deleteBusy) return;
+                setDeleteBusy(true);
+                setDeleteError("");
+                try {
+                  await deleteRequest.action();
+                  setDeleteRequest(null);
+                } catch (e) {
+                  setDeleteError(errorMessage(e));
+                } finally {
+                  setDeleteBusy(false);
+                }
+              }}
+            >
+              {deleteBusy ? "Deleting…" : "Delete record"}
+            </button>
+          </div>
+        </Modal>
+      )}
       {allowanceConfirmation && (
         <Modal
+          confirmation
           title="Record over budget?"
           close={() => resolveAllowanceConfirmation(false)}
         >

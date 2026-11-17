@@ -47,7 +47,6 @@ test("checks allowance and savings together, corrects money taken, and restores 
   await expect(allowance(page, 1)).toBeChecked();
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
   await page
-    .getByRole("region", { name: "Selected day expenses", exact: true })
     .getByRole("button", { name: "Record expense", exact: true })
     .click();
   await page
@@ -117,7 +116,7 @@ test("keeps completed rates and shares period selection between Allowance and Sa
   await configureSavings(page);
   await addPeriod(page, "First period");
   await allowance(page, 1).check();
-  await page.getByRole("button", { name: "Edit period" }).click();
+  await menuAction(page, "Edit period");
   await page.getByLabel("Daily allowance amount").fill("250");
   await page
     .getByRole("button", { name: "Save allowance", exact: true })
