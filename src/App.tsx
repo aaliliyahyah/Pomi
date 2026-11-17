@@ -105,6 +105,7 @@ type PendingAllowanceConfirmation = {
 const pages: { id: Page; label: string; icon: typeof House }[] = [
   { id: "home", label: "Home", icon: House },
   { id: "allowance", label: "Allowance", icon: Wallet },
+  { id: "expenses", label: "Expenses", icon: ArrowUpRight },
   { id: "savings", label: "Savings", icon: Sprout },
   { id: "history", label: "History", icon: History },
   { id: "settings", label: "Settings", icon: Settings },
@@ -2418,6 +2419,289 @@ export default function App() {
                 )}
               </section>
             </>
+          )}
+          {page === "expenses" && (
+            <div className="expenses-page">
+              <header className="page-heading expenses-heading">
+                <div>
+                  <h1 tabIndex={-1}>
+                    My expenses<span>.</span>
+                    <Sticker kind="bow" />
+                  </h1>
+                  <p>Keep track of where your allowance goes.</p>
+                </div>
+                <span className="today-label">{displayDate(today)}</span>
+              </header>
+              <div
+                className="expense-summary-grid expenses-notebook-summary summary-group summary-group-four"
+                aria-label="Expense overview"
+              >
+                <section
+                  className="expense-allowance-card financial-summary summary-allowance"
+                  aria-label="Daily allowance"
+                >
+                  <div className="summary-content">
+                    <h2 className="summary-label">Daily allowance</h2>
+                    <div className="hero-balance summary-amount">
+                      {selectedDailyBalance && !selectedDay?.noClass
+                        ? money(selectedDailyBalance.allocated)
+                        : "—"}
+                    </div>
+                  </div>
+                </section>
+                <section
+                  className="expense-total-card financial-summary summary-spending"
+                  aria-label="Total spent"
+                >
+                  <div className="summary-content">
+                    <h2 className="summary-label">Total spent</h2>
+                    <div
+                      className="hero-balance summary-amount"
+                      data-testid="expenses-total"
+                    >
+                      {money(totalSpent)}
+                    </div>
+                  </div>
+                </section>
+                <section
+                  className="expense-saved-card financial-summary summary-savings"
+                  aria-label="Total savings"
+                >
+                  <div className="summary-content">
+                    <h2 className="summary-label">Saved</h2>
+                    <div className="hero-balance summary-amount">
+                      {money(balances.savings)}
+                    </div>
+                  </div>
+                </section>
+                <section
+                  className="expense-remaining-card financial-summary summary-neutral"
+                  aria-label="Remaining balance"
+                >
+                  <div className="expense-remaining-content summary-content">
+                    <h2 className="summary-label">Remaining balance</h2>
+                    <div
+                      className={`hero-balance summary-amount ${balances.allowance < 0 ? "over-budget" : ""}`}
+                      data-testid="expenses-remaining"
+                    >
+                      {money(balances.allowance)}
+                    </div>
+                  </div>
+                </section>
+              </div>
+              {selectedPeriod && selectedDayNumber && (
+                <div className="expense-controls daily-budget-selectors">
+                  <PeriodSelector
+                    book={book}
+                    periodId={selectedPeriod.id}
+                    select={selectPeriod}
+                  />
+                  <button
+                    className="button secondary"
+                    onClick={() =>
+                      setModal({ type: "period", periodId: selectedPeriod.id })
+                    }
+                  >
+                    Edit period
+                  </button>
+                </div>
+              )}
+              {selectedPeriod && selectedDayNumber && (
+                <section
+                  className="expense-day-list"
+                  aria-label="Daily allowance balance"
+                >
+                  {selectedPeriod.days.map((day, index) => {
+                    const number = index + 1;
+                    const balance = dailyBalance(book, selectedPeriod, number);
+                    const selected =
+                      number === selectedDayNumber && expenseDetailsOpen;
+                    const started = day.amount !== null && !day.noClass;
+                    const status = dayStatus(book, selectedPeriod, index);
+                    return (
+                      <article
+                        className={`expense-day ${selected ? "is-selected" : ""}`}
+                        key={number}
+                      >
+                        <button
+                          className="expense-day-toggle"
+                          aria-expanded={selected}
+                          aria-controls={`expense-day-${number}`}
+                          onClick={() => {
+                            setExpenseDetailsOpen(!selected);
+                            setExpenseSelection({
+                              periodId: selectedPeriod.id,
+                              dayNumber: number,
+                            });
+                          }}
+                        >
+                          <span
+                            className={`expense-day-status ${started ? "is-started" : ""}`}
+                            aria-hidden="true"
+                          >
+                            {started ? <Check size={16} /> : <span />}
+                          </span>
+                          <span className="expense-day-date">
+                            <strong>
+                              {day.date ? displayDate(day.date) : "No date"}
+                            </strong>
+                            <small>
+                              Day {number} ·{" "}
+                              {day.noClass
+                                ? "No class"
+                                : day.amount === null
+                                  ? "Not started"
+                                  : status === "Savings Completed"
+                                    ? "Savings completed"
+                                    : "Budget started"}
+                            </small>
+                          </span>
+                          <span
+                            className={`expense-day-metrics ${selected ? "daily-budget-breakdown" : ""}`}
+                          >
+                            <span>
+                              <span>Allowance</span>
+                              <strong>
+                                {day.noClass ? "—" : money(balance.allocated)}
+                              </strong>
+                            </span>
+                            <span>
+                              <span>Spent</span>
+                              <strong>
+                                {day.noClass ? "—" : money(balance.spent)}
+                              </strong>
+                            </span>
+                            <span>
+                              <span>Saved</span>
+                              <strong>
+                                {day.noClass ? "—" : money(balance.saved)}
+                              </strong>
+                            </span>
+                            <span>
+                              <span>Remaining</span>
+                              <strong
+                                data-testid={
+                                  selected ? "daily-remaining" : undefined
+                                }
+                                className={
+                                  started && balance.remaining < 0
+                                    ? "over-budget"
+                                    : ""
+                                }
+                              >
+                                {started ? money(balance.remaining) : "—"}
+                              </strong>
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className="expense-day-chevron"
+                            size={18}
+                            aria-hidden="true"
+                          />
+                        </button>
+                        {selected && (
+                          <div
+                            id={`expense-day-${number}`}
+                            className="expense-day-body"
+                          >
+                            <section
+                              className="expenses-panel expense-day-records"
+                              aria-label="Selected day expenses"
+                            >
+                              <div className="section-title expenses-records-heading">
+                                <h2>Expenses ({selectedDayExpenses.length})</h2>
+                                <button
+                                  className="button secondary"
+                                  onClick={() =>
+                                    recordDayExpense(selectedPeriod.id, number)
+                                  }
+                                >
+                                  <Plus size={17} aria-hidden="true" /> Record
+                                  expense
+                                </button>
+                              </div>
+                              {selectedDayExpenses.length ? (
+                                <EntryList
+                                  entries={selectedDayExpenses}
+                                  book={book}
+                                  edit={editEntry}
+                                  remove={removeEntry}
+                                />
+                              ) : (
+                                <p className="field-help">
+                                  {day.noClass
+                                    ? "No class — no daily budget."
+                                    : !started
+                                      ? "Start this day in Allowance to assign expenses."
+                                      : "No expenses yet. Record your first expense for this day."}
+                                </p>
+                              )}
+                            </section>
+                            <div className="expense-day-actions">
+                              {!started && !day.noClass && (
+                                <button
+                                  className="button secondary"
+                                  onClick={() =>
+                                    openDay(selectedPeriod.id, number)
+                                  }
+                                >
+                                  Start day in Allowance
+                                  <ChevronRight size={16} aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+              {!selectedPeriod && (
+                <section className="panel daily-budget-panel">
+                  <Empty title="No daily allowance yet">
+                    <a href="#allowance">Add an allowance period</a> to start
+                    tracking daily spending.
+                  </Empty>{" "}
+                  <button
+                    className="button primary"
+                    onClick={() => setModal({ type: "entry", kind: "expense" })}
+                  >
+                    <Plus size={17} aria-hidden="true" />
+                    Record expense
+                  </button>
+                </section>
+              )}
+              <section
+                className="panel expenses-panel"
+                aria-label="Expense records"
+              >
+                <div className="section-title expenses-records-heading">
+                  <h2>All expenses ({expenseEntries.length})</h2>
+                  <button
+                    className="button secondary"
+                    onClick={() => setModal({ type: "entry", kind: "expense" })}
+                  >
+                    <Plus size={17} aria-hidden="true" /> Record expense
+                  </button>
+                </div>
+                <p className="visually-hidden" role="status">
+                  {expenseEntries.length} expenses in this notebook
+                </p>
+                {expenseEntries.length ? (
+                  <EntryList
+                    entries={expenseEntries}
+                    book={book}
+                    edit={editEntry}
+                    remove={removeEntry}
+                  />
+                ) : (
+                  <Empty title="No expenses yet">
+                    Use Record expense to add your first expense.
+                  </Empty>
+                )}
+              </section>
+            </div>
           )}
           {page === "savings" && (
             <>
