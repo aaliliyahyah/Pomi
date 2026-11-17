@@ -30,7 +30,6 @@ import {
   Settings,
   Sprout,
   Ellipsis,
-  Sun,
   Upload,
   Wallet,
   X,
@@ -1936,20 +1935,6 @@ export default function App() {
       archive={() => archiveFund(fund)}
     />
   );
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-  const thisWeek = book.entries.filter(
-    (e) => e.date >= localDate(weekStart) && e.date <= localDate(),
-  );
-  const weekReceived = thisWeek
-    .filter((e) => e.kind === "allowance")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const weekSpent = thisWeek
-    .filter((e) => e.kind === "expense" || e.kind === "spend")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const weekSaved = thisWeek
-    .filter((e) => e.kind === "deposit")
-    .reduce((sum, e) => sum + e.amount, 0);
   return (
     <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       <a
@@ -2091,141 +2076,223 @@ export default function App() {
           )}
           <SavingsReminder book={book} period={selectedPeriod} />
           {page === "home" && (
-            <>
+            <div className="home-dashboard">
               <header className="page-heading home-heading">
                 <div>
-                  <span className="eyebrow">A LITTLE CHECK-IN</span>
-                  <h1>
+                  <h1 tabIndex={-1}>
                     My money, at a glance<span>.</span>
+                    <Sticker kind="bow" />
                   </h1>
-                  <p>
-                    Small notes today. A little more peace of mind tomorrow.
-                  </p>
+                  <p>A little for today. A little for your dreams.</p>
                 </div>
                 <span className="today-label">
-                  {new Date().toLocaleDateString("en-PH", {
+                  <CalendarDays size={16} aria-hidden="true" />
+                  {new Date(`${today}T12:00:00`).toLocaleDateString("en-PH", {
                     weekday: "short",
                     month: "short",
                     day: "numeric",
                   })}
                 </span>
               </header>
-              <div className="balance-grid">
-                <section className="allowance-card">
-                  <div className="balance-label">
-                    <span>
-                      <Wallet size={18} />
-                      Available allowance
+              <div className="dashboard-overview">
+                <div className="balance-grid summary-group summary-group-three">
+                  <section
+                    className="allowance-card financial-summary summary-allowance"
+                    aria-label="Available allowance"
+                  >
+                    <div className="balance-information">
+                      <span className="balance-label summary-label">
+                        Available allowance
+                      </span>
+                      <div
+                        className={`hero-balance summary-amount ${balances.allowance < 0 ? "over-budget" : ""}`}
+                      >
+                        {money(balances.allowance)}
+                      </div>
+                    </div>
+                    <div className="balance-footer">
+                      <p>
+                        {balances.allowance < 0
+                          ? "Below zero"
+                          : "Remaining balance"}
+                      </p>
+                      <div className="balance-actions">
+                        {entryButton(
+                          "allowance",
+                          "Add allowance",
+                          "button secondary",
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                  <section
+                    className="savings-summary financial-summary summary-savings"
+                    aria-label="Total savings"
+                  >
+                    <span className="balance-label summary-label">
+                      Total savings
                     </span>
-                    <span className="badge">YOURS TO USE</span>
+                    <div className="hero-balance summary-amount">
+                      {money(balances.savings)}
+                    </div>
+                  </section>
+                  <section
+                    className="home-expenses financial-summary summary-spending"
+                    aria-label="Expenses summary"
+                  >
+                    <span className="balance-label summary-label">
+                      Total expenses
+                    </span>
+                    <div
+                      className="hero-balance summary-amount"
+                      data-testid="home-expenses-total"
+                    >
+                      {money(totalSpent)}
+                    </div>
+                    <div className="balance-footer">
+                      <div className="balance-actions">
+                        {entryButton(
+                          "expense",
+                          "Record expense",
+                          "button secondary",
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+              <div className="home-checkin-row">
+                <section
+                  className="panel home-daily-checkin"
+                  aria-label="Daily check-in"
+                >
+                  <CalendarCheck size={24} aria-hidden="true" />
+                  <div>
+                    <h2>Daily check-in</h2>
+                    <p>
+                      {homeDay
+                        ? `${displayDate(today)} · Day ${homeDayIndex + 1}${homeDay.noClass ? " · No class" : homePeriod && dayStatus(book, homePeriod, homeDayIndex) === "Savings Completed" ? " · Savings completed" : ""}`
+                        : homePeriod
+                          ? "No school day scheduled today."
+                          : "Set up your allowance and savings days."}
+                    </p>
                   </div>
-                  <div className="hero-balance">
-                    {money(balances.allowance)}
+                  <CheckInLink
+                    book={book}
+                    period={homePeriod}
+                    openDay={(day) => {
+                      if (homePeriod) openDay(homePeriod.id, day);
+                    }}
+                  />
+                </section>
+                <WeeklySavings
+                  book={book}
+                  period={homePeriod}
+                  compact
+                  openDay={(day) => {
+                    if (homePeriod) openDay(homePeriod.id, day);
+                  }}
+                />
+              </div>
+              <div className="dashboard-details">
+                <section
+                  className="panel dashboard-funds"
+                  aria-label="Savings funds preview"
+                >
+                  <div className="section-title">
+                    <h2>
+                      <Sprout size={20} aria-hidden="true" />
+                      Savings funds
+                    </h2>
+                    <a href="#savings">
+                      All funds
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </a>
                   </div>
-                  <p>Your everyday money, carried forward.</p>
-                  <div className="balance-actions">
-                    {entryButton("allowance", "Add allowance", "button light")}
-                    {entryButton("expense", "Add expense", "button glass")}
+                  <div className="home-funds">
+                    {activeFunds.slice(0, 3).map((fund) => {
+                      const balance = balances.funds[fund.id];
+                      const percent = fund.goal
+                        ? Math.min(100, Math.round((balance / fund.goal) * 100))
+                        : null;
+                      return (
+                        <a
+                          className="home-fund-summary"
+                          href="#savings"
+                          onClick={() => setSelectedFundId(fund.id)}
+                          key={fund.id}
+                          aria-label={`${fund.name}: ${money(balance)}${fund.goal ? `, ${percent}% of ${money(fund.goal)} goal` : ""}`}
+                        >
+                          <span className="home-fund-icon">
+                            <Sprout size={18} aria-hidden="true" />
+                          </span>
+                          <span className="home-fund-content">
+                            <span className="home-fund-heading">
+                              <strong>{fund.name}</strong>
+                              <span>{money(balance)}</span>
+                            </span>
+                            {fund.goal && (
+                              <>
+                                <span className="progress" aria-hidden="true">
+                                  <span style={{ width: `${percent}%` }} />
+                                </span>
+                              </>
+                            )}
+                          </span>
+                          <ChevronRight size={16} aria-hidden="true" />
+                        </a>
+                      );
+                    })}
+                    {!activeFunds.length && (
+                      <Empty title="A place for your next goal">
+                        <a href="#savings">Create a savings fund</a>
+                      </Empty>
+                    )}
                   </div>
-                  <div className="card-decoration" aria-hidden="true">
-                    <Leaf />
+
+                  <div className="home-funds-actions">
+                    <button
+                      className="button secondary"
+                      onClick={() => setModal({ type: "fund" })}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                      New fund
+                    </button>
                   </div>
                 </section>
-                <section className="savings-summary">
-                  <div className="balance-label">
-                    <span>
-                      <Sprout size={18} />
-                      Tucked away
-                    </span>
-                    <Sun className="sun-icon" size={24} aria-hidden="true" />
+                <section
+                  className="panel recent-panel"
+                  aria-label="Recent activity"
+                >
+                  <div className="section-title">
+                    <h2>
+                      <History size={20} aria-hidden="true" />
+                      Recent activity
+                    </h2>
+                    <a href="#history">
+                      View history
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </a>
                   </div>
-                  <div className="hero-balance">{money(balances.savings)}</div>
-                  <p>
-                    Across {book.funds.length} savings{" "}
-                    {book.funds.length === 1 ? "fund" : "funds"}, including
-                    archived funds.
-                  </p>
-                  <a href="#savings">
-                    A little closer to your goals
-                    <ArrowUpRight size={18} />
-                  </a>
+                  {recentEntries.length ? (
+                    <EntryList
+                      grouped
+                      preview
+                      entries={recentEntries}
+                      book={book}
+                      edit={editEntry}
+                      remove={removeEntry}
+                    />
+                  ) : (
+                    <p className="home-activity-empty">
+                      No activity yet. Add allowance above or{" "}
+                      <a href="#expenses">record an expense in Expenses</a> to
+                      start your notebook.
+                    </p>
+                  )}
                 </section>
               </div>
-              <section className="week-strip" aria-label="This week’s activity">
-                <div>
-                  <span className="eyebrow">THIS WEEK</span>
-                  <span className="week-caption">One note at a time.</span>
-                </div>
-                <div>
-                  <span>
-                    <ArrowDownLeft size={15} />
-                    Received
-                  </span>
-                  <strong>{money(weekReceived)}</strong>
-                </div>
-                <div>
-                  <span>
-                    <ArrowUpRight size={15} />
-                    Spent
-                  </span>
-                  <strong>{money(weekSpent)}</strong>
-                </div>
-                <div>
-                  <span>
-                    <Sprout size={15} />
-                    Put aside
-                  </span>
-                  <strong>{money(weekSaved)}</strong>
-                </div>
-              </section>
-              <section className="section-block">
-                <div className="section-title">
-                  <div>
-                    <h2>Growing little by little</h2>
-                    <p>A place for the things you’re saving for.</p>
-                  </div>
-                  <a href="#savings">
-                    All funds
-                    <ChevronRight size={16} />
-                  </a>
-                </div>
-                <div className="fund-grid home-funds">
-                  {activeFunds.slice(0, 2).map((f) => renderFund(f, true))}
-                  <button
-                    className="new-fund-card"
-                    onClick={() => setModal({ type: "fund" })}
-                  >
-                    <span>
-                      <Plus size={22} />
-                    </span>
-                    <strong>A new little goal</strong>
-                    <p>Give your next plan a place to grow.</p>
-                  </button>
-                </div>
-              </section>
-              <section className="panel recent-panel">
-                <div className="section-title">
-                  <div>
-                    <h2>Recent notes</h2>
-                    <p>The little ins and outs.</p>
-                  </div>
-                  <a href="#history">
-                    View history
-                    <ChevronRight size={16} />
-                  </a>
-                </div>
-                <EntryList
-                  entries={sorted.slice(0, 5)}
-                  book={book}
-                  edit={editEntry}
-                  remove={removeEntry}
-                />
-              </section>
-              <p className="bottom-note">
-                <Leaf size={14} />
-                Progress doesn’t have to be big to count.
-              </p>
-            </>
+            </div>
           )}
           {page === "allowance" && (
             <>
