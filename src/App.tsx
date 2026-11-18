@@ -1491,6 +1491,20 @@ function FundManagement({
   );
 }
 
+function TodayLabel() {
+  const today = localDate();
+  return (
+    <span className="today-label">
+      <CalendarDays size={16} aria-hidden="true" />
+      {new Date(`${today}T12:00:00`).toLocaleDateString("en-PH", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })}
+    </span>
+  );
+}
+
 function SettingsPage({
   book,
   notify,
@@ -1556,6 +1570,7 @@ function SettingsPage({
           Notebook settings<span>.</span>
         </h1>
         <p>A little housekeeping for your money notes.</p>
+        <TodayLabel />
       </header>
       <div className="settings-grid">
         <div className="settings-primary">
@@ -2546,11 +2561,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="balance-footer">
-                      <p>
-                        {notebookAvailable < 0
-                          ? "Below zero"
-                          : "Remaining balance"}
-                      </p>
+                      {notebookAvailable < 0 && <p>Below zero</p>}
                       <div className="balance-actions">
                         {entryButton(
                           "allowance",
@@ -2614,15 +2625,6 @@ export default function App() {
                       All funds
                       <ChevronRight size={16} aria-hidden="true" />
                     </a>
-                    <div className="home-funds-actions">
-                      <button
-                        className="button secondary"
-                        onClick={() => setModal({ type: "fund" })}
-                      >
-                        <Plus size={16} aria-hidden="true" />
-                        New fund
-                      </button>
-                    </div>
                   </div>
                   <div className="home-funds">
                     {activeFunds.slice(0, 3).map((fund) => {
@@ -2664,6 +2666,15 @@ export default function App() {
                       </Empty>
                     )}
                   </div>
+                  <div className="home-funds-actions">
+                    <button
+                      className="button secondary"
+                      onClick={() => setModal({ type: "fund" })}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                      New fund
+                    </button>
+                  </div>
                 </section>
                 <section
                   className="panel recent-panel"
@@ -2701,15 +2712,23 @@ export default function App() {
           )}
           {page === "allowance" && (
             <>
-              <header className="page-heading action-heading period-page-heading allowance-page-heading">
+              <header className="page-heading action-heading period-page-heading allowance-page-heading expenses-heading">
                 <div>
                   <h1 tabIndex={-1}>
                     My allowance<span>.</span>
                     <Sticker kind="bow" />
                   </h1>
+                  <p>A little for today. A little for your dreams.</p>
                 </div>
+                <span className="today-label">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  {new Date(`${today}T12:00:00`).toLocaleDateString("en-PH", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
                 <div className="header-controls">
-                  {headerPeriod}
                   <ExpandingHeaderAction
                     label="Add allowance"
                     onClick={() => setModal({ type: "period" })}
@@ -2781,16 +2800,14 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="allowance-list-heading">
-                      <div>
-                        <h2>Daily allowance</h2>
-                      </div>
-                    </div>
                     {selectedPeriod && (
                       <article
                         className="allowance-period"
                         key={selectedPeriod.id}
                       >
+                        <div className="allowance-period-heading">
+                          {headerPeriod}
+                        </div>
                         <DailyCheckIn
                           book={book}
                           period={selectedPeriod}
@@ -3209,10 +3226,13 @@ export default function App() {
           {page === "savings" && (
             <div className="savings-page">
               <header className="page-heading period-page-heading savings-heading">
-                <h1 tabIndex={-1}>
-                  Savings funds<span>.</span>
-                  <Sticker kind="bow" />
-                </h1>
+                <div>
+                  <h1 tabIndex={-1}>
+                    Savings funds<span>.</span>
+                    <Sticker kind="bow" />
+                  </h1>
+                  <p>A little for today. A little for your dreams.</p>
+                </div>
                 <div className="header-controls">
                   {selectedFund ? (
                     <div className="header-period-row savings-fund-selector">
@@ -3247,6 +3267,7 @@ export default function App() {
                     }
                   />
                 </div>
+                <TodayLabel />
               </header>
               {selectedFund && (
                 <>
@@ -3320,6 +3341,7 @@ export default function App() {
                     A record of what came in, went out, and stayed for later.
                   </p>
                 </div>
+                <TodayLabel />
               </header>
               <div
                 className="history-summary summary-group summary-group-four"

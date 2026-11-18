@@ -401,56 +401,60 @@ export function DailyCheckIn({
 }) {
   return (
     <div className="allowance-days">
-      <div className="allowance-columns" aria-hidden="true">
-        <span>Date</span>
-        <span>Allowance</span>
-        <span>Actions</span>
-      </div>
-      <div className="checkin-days">
-        {period.days.map((day, index) => {
-          const started = day.amount !== null;
-          const complete =
-            dayStatus(book, period, index) === "Savings Completed" ||
-            (started && !day.requiredFunds?.length);
-          return (
-            <section
-              className={`checkin-day ${day.noClass ? "is-skipped" : complete ? "is-completed" : ""}`}
-              key={index}
-              id={`checkin-day-${period.id}-${index + 1}`}
-              tabIndex={-1}
-              aria-label={`Day ${index + 1}`}
-            >
-              <div className="day-heading">
-                <h3>
+      <table
+        className="savings-days-table allowance-days-table"
+        aria-label="Allowance days"
+      >
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Allowance</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {period.days.map((day, index) => {
+            const started = day.amount !== null;
+            const complete =
+              dayStatus(book, period, index) === "Savings Completed" ||
+              (started && !day.requiredFunds?.length);
+            return (
+              <tr
+                className={`checkin-day ${day.noClass ? "is-skipped" : complete ? "is-completed" : ""}`}
+                key={index}
+                id={`checkin-day-${period.id}-${index + 1}`}
+                tabIndex={-1}
+                aria-label={`Day ${index + 1}`}
+              >
+                <th scope="row" className="allowance-date-cell">
                   <time dateTime={day.date}>{schoolDate(day.date)}</time>
-                </h3>
-                <small>
-                  Day {index + 1}
-                  {day.noClass ? " · No class" : ""}
-                </small>
-              </div>
-              <div className="allowance-cell">
-                <span className="mobile-column-label">Allowance</span>
-                <DayCheck
-                  book={book}
-                  period={period}
-                  dayNumber={index + 1}
-                  confirmAllowance={confirmAllowance}
-                  compact
-                />
-              </div>
-              <div className="day-actions">
-                <SkipDay
-                  book={book}
-                  period={period}
-                  dayNumber={index + 1}
-                  confirmAllowance={confirmAllowance}
-                />
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                  <small>
+                    Day {index + 1}
+                    {day.noClass ? " · No class" : ""}
+                  </small>
+                </th>
+                <td className="allowance-cell">
+                  <DayCheck
+                    book={book}
+                    period={period}
+                    dayNumber={index + 1}
+                    confirmAllowance={confirmAllowance}
+                    compact
+                  />
+                </td>
+                <td className="day-actions">
+                  <SkipDay
+                    book={book}
+                    period={period}
+                    dayNumber={index + 1}
+                    confirmAllowance={confirmAllowance}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

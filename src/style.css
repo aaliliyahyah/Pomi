@@ -245,7 +245,7 @@ h1:focus:not(:focus-visible) {
   display: flex;
   gap: 16px;
   align-items: center;
-  min-height: 48px;
+  min-height: 40px;
   border-radius: var(--radius-control);
   padding: 12px 16px;
   font-size: 0.9375rem;
@@ -447,7 +447,7 @@ h1:focus:not(:focus-visible) {
 }
 .checkin-section {
   min-width: 0;
-  padding: var(--space-3);
+  padding: 12px;
 }
 .period-selector {
   display: flex;
@@ -463,6 +463,50 @@ h1:focus:not(:focus-visible) {
 }
 .allowance-period h3 {
   overflow-wrap: anywhere;
+}
+.allowance-period-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 8px;
+}
+.allowance-period-heading .header-period-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.allowance-period-heading .period-selector {
+  margin: 0;
+}
+.allowance-period-heading .header-period-row > .action-menu {
+  transform: translateY(-4px);
+}
+.allowance-period-heading .period-selector-header {
+  position: relative;
+  inset-block-start: -4px;
+  inset-inline-start: -4px;
+}
+.allowance-period-heading .period-selector-header .select-trigger {
+  padding: 4px 0;
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  border: 0;
+  background: transparent;
+}
+.allowance-period .allowance-columns {
+  margin-inline: 0;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-line);
+}
+.allowance-period .checkin-day {
+  padding: 8px;
+}
+.allowance-period-heading,
+.savings-page .savings-checklist-toolbar,
+.expenses-page .expense-period-toolbar {
+  margin-block-end: 0;
 }
 .period-overview {
   display: flex;
@@ -3059,6 +3103,10 @@ form label.checkbox-label {
   gap: var(--space-2) var(--space-3);
 }
 .today-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
   margin-inline-start: auto;
   padding: var(--space-1) var(--space-2);
   color: var(--color-muted);
@@ -3066,6 +3114,15 @@ form label.checkbox-label {
   border-radius: var(--radius-control);
   font-size: var(--text-supporting);
   flex-shrink: 0;
+}
+.allowance-page-heading .today-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  padding: 8px 16px;
+  margin: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-control);
 }
 .dashboard-overview {
   margin-block-end: var(--space-3);
@@ -3211,6 +3268,7 @@ form label.checkbox-label {
 /* Allowance: aligned daily figures, with short, explicit states. */
 .allowance-page-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-block-end: var(--space-2);
 }
 .allowance-page-summary > .allowance-saved {
   background: var(--color-complete-soft);
@@ -3260,23 +3318,7 @@ form label.checkbox-label {
   color: var(--color-ink);
   font-variant-numeric: tabular-nums;
 }
-.allowance-columns,
 .allowance-days .checkin-day {
-  display: grid;
-  grid-template-columns:
-    minmax(0, 1.45fr) minmax(0, 0.9fr) minmax(0, 1.15fr)
-    minmax(208px, 1.2fr);
-  gap: var(--space-2);
-  align-items: start;
-  padding: var(--space-2) var(--space-1);
-}
-.allowance-columns {
-  color: var(--color-muted);
-  font-size: var(--text-caption);
-  padding-block: var(--space-1);
-}
-.allowance-days .checkin-day {
-  border-top: 1px solid var(--color-line);
   border-radius: 0;
 }
 .allowance-days .checkin-day.is-completed {
@@ -3408,16 +3450,6 @@ form label.checkbox-label {
   white-space: nowrap;
 }
 @media (max-width: 1200px) {
-  .allowance-columns {
-    display: none;
-  }
-  .allowance-days .checkin-day {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .allowance-days .day-heading {
-    grid-column: 1 / -1;
-  }
   .allowance-days .mobile-column-label {
     position: static;
     width: auto;
@@ -3435,7 +3467,6 @@ form label.checkbox-label {
     align-self: center;
   }
   .allowance-days .day-actions {
-    grid-column: 1 / -1;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
@@ -3457,10 +3488,6 @@ form label.checkbox-label {
   }
   .action-heading .period-toolbar {
     flex-basis: 100%;
-  }
-  .allowance-days .checkin-day {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-block: var(--space-2);
   }
   .allowance-days .day-balance,
   .allowance-days .day-status {
@@ -3914,8 +3941,15 @@ form label.checkbox-label {
 
 /* Savings notebook: compact fund choices and a balanced detail workspace. */
 .savings-heading {
-  flex-wrap: wrap;
-  align-items: start;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.savings-heading > .header-controls {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  margin: 0;
 }
 .savings-heading-actions {
   display: flex;
@@ -5187,10 +5221,10 @@ input[inputmode="decimal"],
   width: min(480px, calc(100% - 32px));
 }
 .home-checkin-row {
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-surface);
-  padding: 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   gap: 16px;
 }
 .home-checkin-row .panel {
@@ -5293,11 +5327,17 @@ h5 {
 .expense-day-metrics strong,
 .day-control-name strong,
 .goal-caption,
-.home-fund-heading > span,
 .history-summary strong,
 .allowance-preview strong,
 input[inputmode="decimal"] {
   font-family: var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+.home-dashboard .entry-end > strong,
+.history-page .entry-end > strong,
+.allowance-days .day-control-name strong,
+.home-fund-heading > span {
+  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
 }
 .home-dashboard .weekly-heading h2,
@@ -5554,7 +5594,7 @@ input[type="checkbox"][aria-disabled="true"] {
   grid-row: 2;
 }
 .home-checkin-row {
-  padding: 8px;
+  padding: 0;
 }
 
 /* Compact page-period navigation and restored fund views. */
@@ -5971,18 +6011,60 @@ input[type="checkbox"][aria-disabled="true"] {
 .savings-fund-selector .select-control {
   min-width: 0;
 }
+.header-controls .header-period-row.savings-fund-selector {
+  padding-inline-end: 0;
+}
 .savings-fund-selector .select-trigger {
   border-color: transparent;
   background: transparent;
-  min-height: 46px;
+  min-height: 38px;
+  padding-block: 4px;
   padding-inline: 16px;
   font-family: var(--font-heading, "Lora", serif);
   text-align: start;
+}
+.savings-fund-selector .select-trigger[aria-expanded="true"] {
+  border-radius: var(--radius-control);
+  box-shadow: none;
 }
 .savings-fund-selector .select-trigger > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+@media (hover: hover) {
+  .savings-fund-selector .select-trigger:not(:disabled):hover {
+    position: relative;
+    isolation: isolate;
+    background: transparent;
+  }
+  .savings-fund-selector .select-trigger:not(:disabled):hover::before {
+    position: absolute;
+    z-index: -1;
+    inset-inline: 0;
+    inset-block-start: 50%;
+    block-size: 32px;
+    border-radius: var(--radius-control);
+    background: var(--color-hover);
+    content: "";
+    transform: translateY(-50%);
+  }
+  .savings-fund-selector > .action-menu > summary:hover {
+    position: relative;
+    isolation: isolate;
+    background: transparent;
+  }
+  .savings-fund-selector > .action-menu > summary:hover::before {
+    position: absolute;
+    z-index: -1;
+    inset-inline: 0;
+    inset-block-start: 50%;
+    block-size: 32px;
+    border-radius: var(--radius-control);
+    background: var(--color-hover);
+    content: "";
+    transform: translateY(-50%);
+  }
 }
 .savings-add-menu {
   margin-inline-start: auto;
@@ -6022,12 +6104,30 @@ input[type="checkbox"][aria-disabled="true"] {
   flex-wrap: nowrap;
   gap: 16px;
 }
+.period-page-heading.savings-heading > .header-controls {
+  position: absolute;
+  inset-block-start: 32px;
+  inset-inline: 0;
+  width: auto;
+  margin: 0;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.savings-heading > .today-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  margin: 0;
+}
 .savings-heading .header-controls .savings-fund-selector {
   flex: 1 1 0;
   min-width: 0;
 }
 .savings-add-menu {
   flex: 0 0 48px;
+  inline-size: 48px;
+  align-self: flex-start;
+  margin-block-start: 0;
 }
 /* Selected fund summary and period checklist use separate notebook surfaces. */
 .savings-page .fund-checklist-panel {
@@ -6253,10 +6353,6 @@ input[type="checkbox"][aria-disabled="true"] {
 /* Allowance reserves and selected-fund views. */
 .home-dashboard .balance-grid {
   grid-template-columns: minmax(0, 1fr);
-}
-.allowance-columns,
-.allowance-days .checkin-day {
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(208px, 1.2fr);
 }
 .savings-fund-summary {
   background: var(--color-summary-savings);
@@ -6653,7 +6749,7 @@ input[type="checkbox"][aria-disabled="true"] {
   margin-inline-start: auto;
 }
 .expense-period-toolbar > details.action-menu {
-  transform: translateY(-12px);
+  transform: none;
 }
 @media (hover: hover) {
   .expense-period-toolbar
@@ -6804,7 +6900,20 @@ input[type="checkbox"][aria-disabled="true"] {
 .expense-days-table th,
 .expense-days-table td {
   padding-block: 8px;
+  padding-inline: 4px;
+}
+.allowance-period .allowance-columns,
+.allowance-period .checkin-day {
+  padding-block: 8px;
   padding-inline: 8px;
+}
+.allowance-period .checkin-day {
+  border-block-start: 0;
+  border-block-end: 1px solid var(--color-line);
+}
+.savings-page .savings-checklist-card,
+.expenses-page .expense-day-list {
+  padding: 12px;
 }
 .savings-days-table .day-check,
 .expense-table-date {
@@ -7003,7 +7112,331 @@ input[type="checkbox"][aria-disabled="true"] {
   inset-inline-end: auto;
   transform: translateX(-50%);
 }
+.main-content .financial-summary,
+.savings-page .savings-fund-summary {
+  box-sizing: border-box;
+  height: 144px;
+  padding: 24px;
+}
 .savings-sliding-actions.is-open .savings-slide-main > svg {
   inset-inline-start: 15px;
   transform: none;
+}
+
+/* Final alignment pass against the allowance table header. */
+.expenses-page .expense-day-list,
+.savings-page .savings-checklist-card {
+  padding: 12px;
+}
+.checkin-section,
+.expenses-page .expense-day-list,
+.savings-page .savings-checklist-card {
+  padding-block-start: 8px;
+}
+.expenses-page .expense-period-toolbar,
+.savings-page .savings-checklist-toolbar {
+  min-height: 56px;
+  margin: 0;
+  padding-inline: 0;
+}
+.expenses-page .expense-period-toolbar > .period-selector {
+  margin: 0;
+}
+.savings-page .savings-checklists {
+  margin-block-start: 0;
+}
+.expenses-page .expense-days-table thead th,
+.savings-page .savings-days-table thead th {
+  padding: 4px 8px 8px;
+}
+.expenses-page .expense-days-table,
+.savings-page .savings-days-table {
+  margin-block-start: 0;
+}
+.savings-page .savings-days-table th:first-child { width: 40%; }
+.savings-page .savings-days-table th:last-child { width: 30%; }
+.expenses-page .expense-days-table th:first-child { width: 40%; }
+.expenses-page .expense-days-table th:not(:first-child) { width: 20%; }
+.expenses-page .expense-days-table th,
+.expenses-page .expense-days-table td,
+.savings-page .savings-days-table th,
+.savings-page .savings-days-table td {
+  padding-inline: 8px;
+}
+
+.allowance-days-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.allowance-days-table th,
+.allowance-days-table td {
+  padding: 8px;
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  border-block-end: 1px solid var(--color-line);
+}
+.allowance-days-table thead th {
+  padding: 4px 8px 8px;
+  color: var(--color-muted);
+  font-size: var(--text-caption);
+  font-weight: 400;
+}
+.allowance-days-table th:first-child {
+  width: 40%;
+}
+.allowance-days-table th:nth-child(2) {
+  width: 30%;
+}
+.allowance-days-table th:last-child {
+  width: 30%;
+}
+.allowance-days-table tbody th {
+  font: 600 var(--text-supporting)/1.5 var(--font-body);
+}
+.allowance-days-table tbody th small {
+  display: block;
+  color: var(--color-muted);
+  font: 400 var(--text-caption)/1.5 var(--font-body);
+}
+.allowance-days-table thead {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border: 0;
+  display: table-header-group;
+}
+.allowance-days-table .checkin-day {
+  display: table-row;
+  border: 0;
+}
+.allowance-days-table .allowance-cell,
+.allowance-days-table .day-actions {
+  display: table-cell;
+}
+.allowance-days-table .allowance-cell .day-check {
+  background: transparent;
+}
+.allowance-days-table .day-control-name strong {
+  white-space: nowrap;
+}
+.allowance-days-table .day-actions > .skip-day {
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .allowance-days-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .allowance-days-table tbody .checkin-day {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+    padding: 4px 0;
+    border-block-end: 1px solid var(--color-line);
+  }
+  .allowance-days-table tbody th,
+  .allowance-days-table tbody td {
+    display: block;
+    min-width: 0;
+    padding-block: 2px;
+    border: 0;
+  }
+  .allowance-days-table tbody th {
+    grid-column: 1 / -1;
+  }
+  .allowance-days-table tbody .allowance-cell {
+    grid-column: 1;
+  }
+  .allowance-days-table tbody .day-actions {
+    grid-column: 1;
+  }
+}
+
+/* Home dashboard: lead with money and today's action, then show weekly progress. */
+.home-dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.home-dashboard > .home-heading,
+.home-dashboard > .dashboard-details {
+  grid-column: 1 / -1;
+}
+.home-dashboard > .home-heading {
+  margin-block-end: var(--space-2);
+}
+.home-dashboard > .dashboard-overview,
+.home-dashboard .dashboard-overview > .balance-grid {
+  display: contents;
+}
+.home-dashboard .summary-allowance {
+  grid-column: 1 / 7;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto;
+  align-items: center;
+  height: auto;
+  min-height: 144px;
+  padding: var(--space-3);
+}
+.home-dashboard .home-daily-checkin {
+  min-height: 144px;
+}
+.home-dashboard .summary-allowance .balance-information {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1;
+  align-content: center;
+  gap: var(--space-1);
+}
+.home-dashboard .summary-allowance .balance-footer {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-1);
+}
+@media (min-width: 1201px) {
+  .home-dashboard .summary-allowance {
+    position: relative;
+  }
+  .home-dashboard .summary-allowance .balance-footer {
+    align-self: start;
+    justify-content: flex-start;
+  }
+  .home-dashboard .summary-allowance .balance-actions {
+    position: absolute;
+    inset-block-end: var(--space-2);
+    inset-inline-end: var(--space-2);
+  }
+}
+.home-dashboard .summary-allowance .balance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin: 0;
+}
+.home-checkin-row {
+  display: contents;
+}
+.home-dashboard .home-daily-checkin {
+  grid-column: 7 / -1;
+}
+.home-dashboard .home-daily-checkin > div {
+  position: relative;
+  inset-block-start: 8px;
+}
+.home-dashboard .weekly-savings {
+  grid-column: 1 / -1;
+}
+.home-dashboard .weekly-school-days {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: none;
+}
+.home-dashboard .weekly-money-progress {
+  max-width: none;
+}
+.home-dashboard .dashboard-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.home-dashboard .dashboard-funds {
+  display: flex;
+  flex-direction: column;
+}
+.home-dashboard .dashboard-funds .home-funds-actions {
+  justify-content: flex-end;
+  margin-block-start: auto;
+  padding-block-start: var(--space-2);
+}
+@media (max-width: 1200px) {
+  .home-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-dashboard > .home-heading,
+  .home-dashboard > .dashboard-details {
+    grid-column: 1;
+  }
+  .home-checkin-row {
+    display: grid;
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--space-2);
+    margin: 0;
+  }
+  .home-dashboard .summary-allowance {
+    grid-column: 1;
+  }
+  .home-dashboard .home-daily-checkin,
+  .home-dashboard .weekly-savings {
+    grid-column: auto;
+  }
+  .home-dashboard .summary-allowance {
+    min-height: 0;
+  }
+}
+@media (max-width: 1100px) {
+  .home-dashboard .dashboard-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1000px) {
+  .home-checkin-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .home-dashboard .summary-allowance {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+  .main-content .home-dashboard .summary-allowance {
+    padding: var(--space-2);
+  }
+  .home-dashboard .summary-allowance .balance-information,
+  .home-dashboard .summary-allowance .balance-footer {
+    grid-column: 1;
+  }
+  .home-dashboard .summary-allowance .balance-footer {
+    grid-row: 2;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  .home-dashboard .summary-allowance .balance-actions {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 400px) {
+  .home-dashboard .summary-allowance .balance-actions {
+    gap: 4px;
+  }
+  .home-dashboard .summary-allowance .balance-actions .button {
+    gap: 4px;
+    padding-inline: 4px;
+  }
 }
