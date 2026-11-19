@@ -7382,6 +7382,12 @@ input[type="checkbox"][aria-disabled="true"] {
   }
 }
 
+/* The card edge closes each daily table; keep dividers only between rows. */
+:is(.savings-days-table, .fund-details-table) > tbody > tr:last-child,
+:is(.savings-days-table, .fund-details-table) > tbody > tr:last-child > :is(th, td) {
+  border-block-end: 0;
+}
+
 /* Home dashboard: lead with money and today's action, then show weekly progress. */
 .home-dashboard {
   display: grid;
