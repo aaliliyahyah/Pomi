@@ -2,7 +2,6 @@ import { weeklySavings } from "./weekly-savings";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Check,
-  Circle,
   CircleCheck,
   ChevronRight,
   Minus,
@@ -261,10 +260,27 @@ export function WeeklySavings({
   return (
     <section className="weekly-savings" aria-label="Weekly savings progress">
       <div className="weekly-heading">
-        <h2>{compact ? "This week" : "Your weekly savings"}</h2>
+        <div className="weekly-title">
+          <h2>{compact ? "This week" : "Your weekly savings"}</h2>
+          {compact && days.length > 0 && (
+            <p className="weekly-date-range">
+              {new Date(`${days[0].date}T12:00:00`).toLocaleDateString("en-PH", {
+                month: "short",
+                day: "numeric",
+              })}
+              {" – "}
+              {new Date(`${days[days.length - 1].date}T12:00:00`).toLocaleDateString("en-PH", {
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
+          )}
+        </div>
         {days.length > 0 && (
           <span>
-            {eligible ? `${completed} of ${eligible} days` : "No school days"}
+            {compact && eligible ? (
+              <><strong>{completed}<span> / {eligible}</span></strong> days saved</>
+            ) : eligible ? `${completed} of ${eligible} days` : "No school days"}
           </span>
         )}
       </div>
@@ -291,25 +307,50 @@ export function WeeklySavings({
                   key={day.dayNumber}
                   href="#allowance"
                   onClick={() => openDay(day.dayNumber)}
-                  className={`weekly-school-day ${day.status === "Savings Completed" ? "completed" : ""}`}
+                  className={`weekly-school-day ${day.status === "Savings Completed" ? "completed" : ""}${day.noClass ? " is-no-class" : ""}${day.date === today ? " is-today" : ""}`}
                   aria-label={`${name}: ${status}`}
+                  aria-current={day.date === today ? "date" : undefined}
                   title={`${name}: ${status}`}
                 >
+                  {compact && (
+                    <time className="weekly-day-name" dateTime={day.date}>
+                      {date.toLocaleDateString("en-PH", { weekday: "short" })}
+                    </time>
+                  )}
                   <span className="weekly-day-mark">
-                    {day.status === "Savings Completed" ? (
+                    {compact ? (
+                      <span aria-hidden="true">{date.getDate()}</span>
+                    ) : day.status === "Savings Completed" ? (
                       <Check size={18} aria-hidden="true" />
-                    ) : compact ? (
-                      <Circle size={14} aria-hidden="true" />
                     ) : (
                       <Minus size={18} aria-hidden="true" />
                     )}
                   </span>
-                  <time dateTime={day.date}>
-                    {date
-                      .toLocaleDateString("en-PH", { weekday: "short" })
-                      .slice(0, compact ? 3 : 1)}
-                  </time>
-                  {day.noClass && <small>No Class</small>}
+                  {!compact && (
+                    <time dateTime={day.date}>
+                      {date
+                        .toLocaleDateString("en-PH", { weekday: "short" })
+                        .slice(0, 1)}
+                    </time>
+                  )}
+                  {compact ? (
+                    <small className="weekly-day-status">
+                      {day.status === "Savings Completed" && (
+                        <Check size={12} aria-hidden="true" />
+                      )}
+                      {day.noClass
+                        ? "No class"
+                        : day.status === "Savings Completed"
+                          ? "Saved"
+                          : day.date === today
+                            ? "Today"
+                            : day.date! > today
+                              ? "Later"
+                              : "Pending"}
+                    </small>
+                  ) : (
+                    day.noClass && <small>No Class</small>
+                  )}
                 </a>
               );
             })}
