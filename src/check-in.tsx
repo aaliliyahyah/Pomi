@@ -167,6 +167,12 @@ function DayCheck({
   useEffect(() => {
     if (pending === stored) setPending(null);
   }, [stored, pending]);
+  useEffect(() => {
+    if (!error) return;
+    const dismiss = () => setError("");
+    document.addEventListener("click", dismiss, true);
+    return () => document.removeEventListener("click", dismiss, true);
+  }, [error]);
   async function toggle(value: boolean) {
     if (lock.current || pending !== null || unavailable) return;
     lock.current = true;
